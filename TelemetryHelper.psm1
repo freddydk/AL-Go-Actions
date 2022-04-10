@@ -44,3 +44,12 @@ function CreateScope {
 
     return $telemetryScope
 }
+
+function GetHash {
+    param(
+        [string] $str
+    )
+
+    $stream = [IO.MemoryStream]::new([Text.Encoding]::UTF8.GetBytes($str))
+    Get-FileHash -InputStream $stream -Algorithm SHA256 | Select-Object Hash
+}
