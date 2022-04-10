@@ -37,12 +37,13 @@ function CreateScope {
         throw "Invalid event id ($eventId) is enountered."
     }
 
+    Write-Host "SignalName: $signalName"
+    Write-Host "EventId: $eventId"
+    
     if ($parentTelemetryScopeJson -and $parentTelemetryScopeJson -ne "{}") {
-        Write-Host "Register telemetryscope $parentTelemetryScopeJson"
-        RegisterTelemetryScope $parentTelemetryScopeJson
+        $telemetryScope = RegisterTelemetryScope $parentTelemetryScopeJson
     }
-    else {
-        Write-Host "Init telemetryscope $signalName $eventId"
-        InitTelemetryScope -name $signalName -eventId $eventId  -parameterValues @()  -includeParameters @()
-    }
+
+    $telemetryScope = InitTelemetryScope -name $signalName -eventId $eventId  -parameterValues @()  -includeParameters @()
+    return $telemetryScope
 }
