@@ -51,5 +51,5 @@ function GetHash {
     )
 
     $stream = [IO.MemoryStream]::new([Text.Encoding]::UTF8.GetBytes($str))
-    Get-FileHash -InputStream $stream -Algorithm SHA256 | Select-Object Hash
+    (Get-FileHash -InputStream $stream -Algorithm SHA256).Hash
 }
