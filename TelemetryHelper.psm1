@@ -38,9 +38,11 @@ function CreateScope {
     }
 
     if ($parentTelemetryScopeJson -and $parentTelemetryScopeJson -ne "{}") {
-        $telemetryScope = RegisterTelemetryScope $parentTelemetryScopeJson
+        Write-Host "Register telemetryscope $parentTelemetryScopeJson"
+        RegisterTelemetryScope $parentTelemetryScopeJson
     }
-
-    $telemetryScope = InitTelemetryScope -name $signalName -eventId $eventId  -parameterValues @()  -includeParameters @()
-    return $telemetryScope
+    else {
+        Write-Host "Init telemetryscope $signalName $eventId"
+        InitTelemetryScope -name $signalName -eventId $eventId  -parameterValues @()  -includeParameters @()
+    }
 }
