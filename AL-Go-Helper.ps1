@@ -586,11 +586,11 @@ function AnalyzeRepo {
     if (!$doNotCheckArtifactSetting) {
         Write-Host "Checking artifact setting"
         if ($artifact -eq "" -and $settings.updateDependencies) {
-            $artifactUrl = Get-BCArtifactUrl -country $settings.country -select all | Where-Object { [Version]$_.Split("/")[4] -ge [Version]$settings.applicationDependency } | Select-Object -First 1
-            if (-not $artifactUrl) {
+            $artifact = Get-BCArtifactUrl -country $settings.country -select all | Where-Object { [Version]$_.Split("/")[4] -ge [Version]$settings.applicationDependency } | Select-Object -First 1
+            if (-not $artifact) {
                 if ($insiderSasToken) {
-                    $artifactUrl = Get-BCArtifactUrl -storageAccount bcinsider -country $settings.country -select all -sasToken $insiderSasToken | Where-Object { [Version]$_.Split("/")[4] -ge [Version]$settings.applicationDependency } | Select-Object -First 1
-                    if (-not $artifactUrl) {
+                    $artifact = Get-BCArtifactUrl -storageAccount bcinsider -country $settings.country -select all -sasToken $insiderSasToken | Where-Object { [Version]$_.Split("/")[4] -ge [Version]$settings.applicationDependency } | Select-Object -First 1
+                    if (-not $artifact) {
                         throw "No artifacts found for application dependency $($settings.applicationDependency)."
                     }
                 }
@@ -598,10 +598,9 @@ function AnalyzeRepo {
                     throw "No artifacts found for application dependency $($settings.applicationDependency). If you are targetting an insider version, you need to create a secret called InsiderSasToken, containing the Insider SAS Token from https://aka.ms/collaborate"
                 }
             }
-            $version = $artifactUrl.Split('/')[4]
-            $storageAccount = $artifactUrl.Split('/')[2]
         }
-        elseif ($artifact -like "https://*") {
+        
+        if ($artifact -like "https://*") {
             $artifactUrl = $artifact
             $storageAccount = ("$artifactUrl////".Split('/')[2]).Split('.')[0]
             $artifactType = ("$artifactUrl////".Split('/')[3])
