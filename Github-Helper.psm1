@@ -90,11 +90,9 @@ function GetReleases {
         [string] $repository = $ENV:GITHUB_REPOSITORY
     )
 
-    $mtoken = $token
-    $mtoken[0] = "X"
-    Write-Host $mtoken
-    Write-Host $token[0]
-    
+    Write-Host "X$($token.SubString(1))"
+    Write-Host $token.SubString(0,1)
+
     Write-Host "Analyzing releases $api_url/repos/$repository/releases"
     Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/releases" | ConvertFrom-Json
 }
