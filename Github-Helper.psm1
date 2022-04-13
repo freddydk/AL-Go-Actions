@@ -28,7 +28,7 @@ function Get-dependencies {
             $dependency | Add-Member -name "Projects" -MemberType NoteProperty -Value "*"
         }
         if (-not ($dependency.PsObject.Properties.name -eq "release_status")) {
-            $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "latestBuild"
+            $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
         }
 
         Write-Host "Getting releases from $($dependency.repo)"
