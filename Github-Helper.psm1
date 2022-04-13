@@ -31,6 +31,8 @@ function Get-dependencies {
             $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
         }
 
+        # TODO better error messages
+
         $repository = ([uri]$dependency.repo).AbsolutePath.Replace(".git", "").TrimStart("/")
         if ($dependency.release_status -eq "latestBuild") {
 
@@ -89,9 +91,6 @@ function GetReleases {
         [string] $api_url = $ENV:GITHUB_API_URL,
         [string] $repository = $ENV:GITHUB_REPOSITORY
     )
-
-    Write-Host "X$($token.SubString(1))"
-    Write-Host $token.SubString(0,1)
 
     Write-Host "Analyzing releases $api_url/repos/$repository/releases"
     Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/releases" | ConvertFrom-Json
