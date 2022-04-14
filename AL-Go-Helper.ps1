@@ -376,6 +376,7 @@ function ReadSettings {
         "installApps"                            = @()
         "installTestApps"                        = @()
         "installOnlyReferencedApps"              = $true
+        "generateDependencyArtifact"             = $true
         "skipUpgrade"                            = $false
         "applicationDependency"                  = "18.0.0.0"
         "updateDependencies"                     = $false
@@ -1214,6 +1215,7 @@ function CreateDevEnv {
             -installApps $installApps `
             -installTestApps $installTestApps `
             -installOnlyReferencedApps:$repo.installOnlyReferencedApps `
+            -generateDependencyArtifact:$repo.generateDependencyArtifact `
             -appFolders $repo.appFolders `
             -testFolders $repo.testFolders `
             -testResultsFile $testResultsFile `
