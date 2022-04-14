@@ -656,8 +656,8 @@ function AnalyzeRepo {
             if (-not ($folders)) {
                 throw "Unable to download artifacts from $($artifactUrl.Split('?')[0]), please check $ALGoSettingsFile."
             }
-            $settings.artifact = $artifactUrl
         }
+        $settings.artifact = $artifactUrl
 
         if ([Version]$settings.applicationDependency -gt [Version]$version) {
             throw "Application dependency is set to $($settings.applicationDependency), which isn't compatible with the artifact version $version"
@@ -773,7 +773,7 @@ function CloneIntoNewFolder {
 
 function CommitFromNewFolder {
     Param(
-        [string] $severUrl,
+        [string] $serverUrl,
         [string] $commitMessage,
         [string] $branch
     )
