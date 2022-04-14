@@ -1216,7 +1216,6 @@ function CreateDevEnv {
             -installApps $installApps `
             -installTestApps $installTestApps `
             -installOnlyReferencedApps:$repo.installOnlyReferencedApps `
-            -generateDependencyArtifact:$repo.generateDependencyArtifact `
             -appFolders $repo.appFolders `
             -testFolders $repo.testFolders `
             -testResultsFile $testResultsFile `
