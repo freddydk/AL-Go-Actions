@@ -376,7 +376,7 @@ function ReadSettings {
         "installApps"                            = @()
         "installTestApps"                        = @()
         "installOnlyReferencedApps"              = $true
-        "generateDependencyArtifact"             = $true
+        "generateDependencyArtifact"             = $false
         "skipUpgrade"                            = $false
         "applicationDependency"                  = "18.0.0.0"
         "updateDependencies"                     = $false
