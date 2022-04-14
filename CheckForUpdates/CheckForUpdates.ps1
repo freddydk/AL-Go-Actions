@@ -196,7 +196,7 @@ try {
                 invoke-git status
 
                 $templateUrl = "$templateUrl@$templateBranch"
-                $RepoSettingsFile = "C:\src\github\BusinessCentralApps\BingMaps.PTE\.github\AL-Go-Settings.json"
+                $RepoSettingsFile = ".github\AL-Go-Settings.json"
                 if (Test-Path $RepoSettingsFile) {
                     $repoSettings = Get-Content $repoSettingsFile -Encoding UTF8 | ConvertFrom-Json
                 }
