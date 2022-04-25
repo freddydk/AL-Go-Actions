@@ -1076,8 +1076,7 @@ function CreateDevEnv {
         }
         $repo = AnalyzeRepo @params
         if ((-not $repo.appFolders) -and (-not $repo.testFolders)) {
-            Write-Host "Repository is empty, exiting"
-            exit
+            Write-Host -ForegroundColor Red "Repository is empty"
         }
 
         if ($kind -eq "local" -and $repo.type -eq "AppSource App" ) {
