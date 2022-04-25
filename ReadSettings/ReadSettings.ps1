@@ -133,30 +133,24 @@ try {
     }
 
     if ($getenvironments) {
-        $headers = @{ 
-            "Authorization" = "token $token"
-            "Accept"        = "application/vnd.github.v3+json"
-        }
-        $url = "$($ENV:GITHUB_API_URL)/repos/$($ENV:GITHUB_REPOSITORY)/environments"
-        Write-Host $url
-        Write-Host $token
-        try {
-            Write-Host "get environments"
+        $environments = @()
+        try { 
+            $headers = @{ 
+                "Authorization" = "token $token"
+                "Accept"        = "application/vnd.github.v3+json"
+            }
+            $url = "$($ENV:GITHUB_API_URL)/repos/$($ENV:GITHUB_REPOSITORY)/environments"
             $environments = @((Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $url | ConvertFrom-Json).environments)
-
-            Write-host "done"
-            $environments = @($settings.Environments)+@((Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $url | ConvertFrom-Json).environments | Where-Object { 
-                if ($includeProduction) {
-                    $_.Name -like $getEnvironments -or $_.Name -like "$getEnvironments (Production)"
-                }
-                else {
-                    $_.Name -like $getEnvironments -and $_.Name -notlike '* (Production)'
-                }
-            } | ForEach-Object { $_.Name })
-        }
         catch {
-            $environments = @()
         }
+        $environments = @($environments+@($settings.Environments) | Where-Object { 
+            if ($includeProduction) {
+                $_.Name -like $getEnvironments -or $_.Name -like "$getEnvironments (Production)"
+            }
+            else {
+                $_.Name -like $getEnvironments -and $_.Name -notlike '* (Production)'
+            }
+        } | ForEach-Object { $_.Name })
         if ($environments.Count -eq 1) {
             $environmentsJSon = "[$($environments | ConvertTo-Json -compress)]"
         }
