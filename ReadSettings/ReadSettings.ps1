@@ -141,6 +141,7 @@ try {
             }
             $url = "$($ENV:GITHUB_API_URL)/repos/$($ENV:GITHUB_REPOSITORY)/environments"
             $environments = @((Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $url | ConvertFrom-Json).environments)
+        }
         catch {
         }
         $environments = @($environments+@($settings.Environments) | Where-Object { 
