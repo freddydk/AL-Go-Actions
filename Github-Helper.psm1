@@ -4,8 +4,7 @@ function Get-dependencies {
         $token,
         [string] $api_url = $ENV:GITHUB_API_URL,
         [string] $saveToPath = (Join-Path $ENV:GITHUB_WORKSPACE "dependencies"),
-        [string] $mask = "-Apps-",
-        [Switch] $throwIfNotFound
+        [string] $mask = "-Apps-"
     )
 
     if (!(Test-Path $saveToPath)) {
@@ -52,8 +51,8 @@ function Get-dependencies {
             if ($artifact) {
                 $download = DownloadArtifact -path $saveToPath -token $dependency.authTokenSecret -artifact $artifact
             }
-            elseif ($throwIfNotFound) {
-                throw "Could not find any artifacts that matches the criteria."
+            else {
+                Write-Host -ForegroundColor Red "Could not find any artifacts that matches '*$mask*'"
             }
         }
         else {
