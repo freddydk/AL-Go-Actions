@@ -4,7 +4,8 @@ function Get-dependencies {
         $token,
         [string] $api_url = $ENV:GITHUB_API_URL,
         [string] $saveToPath = (Join-Path $ENV:GITHUB_WORKSPACE "dependencies"),
-        [string] $mask = "-Apps-"
+        [string] $mask = "-Apps-",
+        [Switch] $throwIfNotFound
     )
 
     if (!(Test-Path $saveToPath)) {
@@ -15,6 +16,9 @@ function Get-dependencies {
     $downloadedList = @()
     $probingPathsJson | ForEach-Object {
         $dependency = $_
+
+        Write-host $dependency.Repo
+
         if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
             throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
         }
@@ -45,7 +49,7 @@ function Get-dependencies {
             }    
                 
             $artifact = $artifacts | Select-Object -First 1
-            if (!($artifact)) {
+            if ($throwIfNotFound -and !($artifact)) {
                 throw "Could not find any artifacts that matches the criteria."
             }
 
