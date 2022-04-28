@@ -49,11 +49,12 @@ function Get-dependencies {
             }    
                 
             $artifact = $artifacts | Select-Object -First 1
-            if ($throwIfNotFound -and !($artifact)) {
+            if ($artifact) {
+                $download = DownloadArtifact -path $saveToPath -token $dependency.authTokenSecret -artifact $artifact
+            }
+            elseif ($throwIfNotFound) {
                 throw "Could not find any artifacts that matches the criteria."
             }
-
-            $download = DownloadArtifact -path $saveToPath -token $dependency.authTokenSecret -artifact $artifact
         }
         else {
 
