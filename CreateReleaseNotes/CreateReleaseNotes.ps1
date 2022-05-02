@@ -46,7 +46,7 @@ try {
     TrackTrace -telemetryScope $telemetryScope
 }
 catch {
-    OutputWarning -message "Couldn't create a release notes. $([environment]::Newline) $($_.Exception.Message)"
+    OutputWarning -message "Couldn't create release notes. $([environment]::Newline) $($_.Exception.Message)"
     OutputWarning -message "You can modify the release note from the release page later."
 
     $releaseNotes = ""
