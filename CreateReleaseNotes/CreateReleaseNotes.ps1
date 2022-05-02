@@ -28,6 +28,8 @@ try {
 
     Import-Module (Join-Path $PSScriptRoot '..\Github-Helper.psm1' -Resolve)
 
+    SemVerStrToSemVerObj -semVerStr $tag_name | Out-Null
+
     $latestRelease = GetLatestRelease -token $token -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY 
 
     $latestReleaseTag = ""
