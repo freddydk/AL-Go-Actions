@@ -141,6 +141,16 @@ try {
                 $replacePattern = "on:`r`n  schedule:`r`n  - cron: '$($repoSettings."$workflowScheduleKey")'`r`n  workflow_dispatch:`r`n"
                 $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
             }
+            
+            if ($repoSettings.ContainsKey("runs-on")) {
+Write-Host "replace runs-on"
+                $srcPattern = "runs-on: [ windows-latest ]`r`n"
+                $replacePattern = "runs-on: [ $($repoSettings."runs-on") ]`r`n"
+                $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
+                $srcPattern = "runs-on: `${{ fromJson(needs.Initialization.outputs.githubRunner) }}`r`n"
+                $replacePattern = "runs-on: [ $($repoSettings."runs-on") ]`r`n"
+                $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
+            }
                 
             $dstFile = Join-Path $dstFolder $fileName
             if (Test-Path -Path $dstFile -PathType Leaf) {
