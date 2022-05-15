@@ -237,8 +237,7 @@ try {
     "enableCodeCop",
     "enableAppSourceCop",
     "enablePerTenantExtensionCop",
-    "enableUICop"
-     | ForEach-Object {
+    "enableUICop" | ForEach-Object {
         if ($repo."$_") { $runAlPipelineParams += @{ "$_" = $true } }
     }
 
