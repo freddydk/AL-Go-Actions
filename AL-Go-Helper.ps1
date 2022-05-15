@@ -391,6 +391,7 @@ function ReadSettings {
         "rulesetFile"                            = ""
         "doNotBuildTests"                        = $false
         "doNotRunTests"                          = $false
+        "doNotPublishApps"                       = $false
         "appSourceCopMandatoryAffixes"           = @()
         "memoryLimit"                            = ""
         "templateUrl"                            = ""
@@ -1206,6 +1207,17 @@ function CreateDevEnv {
             }
         }
         
+        "installTestRunner",
+        "installTestFramework",
+        "installTestLibraries",
+        "installPerformanceToolkit",
+        "enableCodeCop",
+        "enableAppSourceCop",
+        "enablePerTenantExtensionCop",
+        "enableUICop" | ForEach-Object {
+            if ($repo."$_") { $runAlPipelineParams += @{ "$_" = $true } }
+        }
+
         Run-AlPipeline @runAlPipelineParams `
             -pipelinename $workflowName `
             -imageName "" `
@@ -1219,15 +1231,7 @@ function CreateDevEnv {
             -testFolders $repo.testFolders `
             -testResultsFile $testResultsFile `
             -testResultsFormat 'JUnit' `
-            -installTestRunner:$repo.installTestRunner `
-            -installTestFramework:$repo.installTestFramework `
-            -installTestLibraries:$repo.installTestLibraries `
-            -installPerformanceToolkit:$repo.installPerformanceToolkit `
-            -enableCodeCop:$repo.enableCodeCop `
-            -enableAppSourceCop:$repo.enableAppSourceCop `
-            -enablePerTenantExtensionCop:$repo.enablePerTenantExtensionCop `
-            -enableUICop:$repo.enableUICop `
-            -customCodeCops:$repo.customCodeCops `
+            -customCodeCops $repo.customCodeCops `
             -azureDevOps:($caller -eq 'AzureDevOps') `
             -gitLab:($caller -eq 'GitLab') `
             -gitHubActions:($caller -eq 'GitHubActions') `
