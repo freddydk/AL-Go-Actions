@@ -429,7 +429,10 @@ function ReadSettings {
                 if ($settingsJson.PSObject.Properties.Name -eq "ConditionalSettings") {
                     $settingsJson.ConditionalSettings | ForEach-Object {
                         $conditionalSetting = $_
+                        Write-Host "check $_  $ENV:GITHUB_REF_NAME"
                         if ($conditionalSetting.branches | Where-Object { $ENV:GITHUB_REF_NAME -like $_ }) {
+                            Write-Host "Applying conditional settings"
+                            $conditionalSetting.settings | Out-Host
                             MergeCustomObjectIntoOrderedDictionary -dst $settings -src $conditionalSetting.settings
                         }
                     }
