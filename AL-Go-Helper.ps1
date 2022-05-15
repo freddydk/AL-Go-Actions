@@ -425,6 +425,15 @@ function ReadSettings {
                 # check settingsJson.version and do modifications if needed
          
                 MergeCustomObjectIntoOrderedDictionary -dst $settings -src $settingsJson
+
+                if ($settingsJson.PSObject.Properties.Name -eq "ConditionalSettings") {
+                    $settingsJson.ConditionalSettings | ForEach-Object {
+                        $conditionalSetting = $_
+                        if ($conditionalSetting.branches | Where-Object { $ENV:GITHUB_REF_NAME -like $_ }) {
+                            MergeCustomObjectIntoOrderedDictionary -dst $settings -src $conditionalSetting.settings
+                        }
+                    }
+                }
             }
             catch {
                 throw "Settings file $settingsFile, is wrongly formatted. Error is $($_.Exception.Message)."
