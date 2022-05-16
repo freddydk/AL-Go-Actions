@@ -392,6 +392,7 @@ function ReadSettings {
         "doNotBuildTests"                        = $false
         "doNotRunTests"                          = $false
         "doNotPublishApps"                       = $false
+        "doNotSignApps"                          = $false
         "appSourceCopMandatoryAffixes"           = @()
         "memoryLimit"                            = ""
         "templateUrl"                            = ""
@@ -429,10 +430,8 @@ function ReadSettings {
                 if ($settingsJson.PSObject.Properties.Name -eq "ConditionalSettings") {
                     $settingsJson.ConditionalSettings | ForEach-Object {
                         $conditionalSetting = $_
-                        Write-Host "check $_  $ENV:GITHUB_REF_NAME"
                         if ($conditionalSetting.branches | Where-Object { $ENV:GITHUB_REF_NAME -like $_ }) {
-                            Write-Host "Applying conditional settings"
-                            $conditionalSetting.settings | Out-Host
+                            Write-Host "Applying conditional settings for $ENV:GITHUB_REF_NAME"
                             MergeCustomObjectIntoOrderedDictionary -dst $settings -src $conditionalSetting.settings
                         }
                     }

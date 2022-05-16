@@ -131,7 +131,7 @@ try {
 
     # Check if insidersastoken is used (and defined)
 
-    if ($CodeSignCertificateUrl -and $CodeSignCertificatePassword) {
+    if (!$repo.doNotSignApps -and $CodeSignCertificateUrl -and $CodeSignCertificatePassword) {
         $runAlPipelineParams += @{ 
             "CodeSignCertPfxFile" = $codeSignCertificateUrl
             "CodeSignCertPfxPassword" = ConvertTo-SecureString -string $codeSignCertificatePassword -AsPlainText -Force
