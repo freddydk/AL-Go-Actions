@@ -274,7 +274,8 @@ try {
         -buildArtifactFolder $buildArtifactFolder `
         -CreateRuntimePackages:$CreateRuntimePackages `
         -appBuild $appBuild -appRevision $appRevision `
-        -uninstallRemovedApps
+        -uninstallRemovedApps `
+        -RemoveBcContainer { Param([Hashtable]$parameters) Remove-BcContainerSession -containerName $parameters.ContainerName -killPsSessionProcess; Remove-BcContainer @parameters }
 
     if ($storageContext) {
         Write-Host "Publishing to $storageContainerName in $($storageAccount.StorageAccountName)"
