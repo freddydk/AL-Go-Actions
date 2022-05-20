@@ -496,11 +496,12 @@ function AnalyzeRepo {
         }
     }
 
-    if (-not (@($settings.appFolders)+@($settings.testFolders))) {
+    if (-not (@($settings.appFolders)+@($settings.testFolders)+@($settings.bcptTestFolders))) {
         Get-ChildItem -Path $baseFolder -Directory | Where-Object { Test-Path -Path (Join-Path $_.FullName "app.json") } | ForEach-Object {
             $folder = $_
             $appJson = Get-Content (Join-Path $folder.FullName "app.json") -Encoding UTF8 | ConvertFrom-Json
             $isTestApp = $false
+            $isBcptTestApp = $false
             if ($appJson.PSObject.Properties.Name -eq "dependencies") {
                 $appJson.dependencies | ForEach-Object {
                     if ($_.PSObject.Properties.Name -eq "AppId") {
@@ -509,12 +510,18 @@ function AnalyzeRepo {
                     else {
                         $id = $_.Id
                     }
-                    if ($testRunnerApps.Contains($id)) { 
+                    if ($performanceToolkitApps.Contains($id)) { 
+                        $isBcptTestApp = $true
+                    }
+                    elseif ($testRunnerApps.Contains($id)) { 
                         $isTestApp = $true
                     }
                 }
             }
-            if ($isTestApp) {
+            if ($isBcptTestApp) {
+                $settings.bcptTestFolders += @($_.Name)
+            }
+            elseif ($isTestApp) {
                 $settings.testFolders += @($_.Name)
             }
             else {
@@ -525,15 +532,24 @@ function AnalyzeRepo {
 
     Write-Host "Checking appFolders and testFolders"
     $dependencies = [ordered]@{}
-    $true, $false | ForEach-Object {
-        $appFolder = $_
+    1..3 | ForEach-Object {
+        $appFolder = $_ -eq 1
+        $testFolder = $_ -eq 2
+        $bcptTestFolder = $_ -eq 3
         if ($appFolder) {
             $folders = @($settings.appFolders)
             $descr = "App folder"
         }
-        else {
+        elseif ($testFolder) {
             $folders = @($settings.testFolders)
             $descr = "Test folder"
+        }
+        elseif ($bcptTestFolder) {
+            $folders = @($settings.bcptTestFolders)
+            $descr = "Bcpt Test folder"
+        }
+        else {
+            throw "Internal error"
         }
         $folders | ForEach-Object {
             $folderName = $_
@@ -555,8 +571,11 @@ function AnalyzeRepo {
                 if ($appFolder) {
                     $settings.appFolders = @($settings.appFolders | Where-Object { $_ -ne $folderName })
                 }
-                else {
+                elseif ($testFolder) {
                     $settings.testFolders = @($settings.testFolders | Where-Object { $_ -ne $folderName })
+                }
+                elseif ($bcptTestFolder) {
+                    $settings.bcptTestFolders = @($settings.bcptTestFolders | Where-Object { $_ -ne $folderName })
                 }
             }
             else {
@@ -708,6 +727,7 @@ function AnalyzeRepo {
 
     Write-Host "Analyzing Test App Dependencies"
     if ($settings.testFolders) { $settings.installTestRunner = $true }
+    if ($settings.bcptTestFolders) { $settings.installPerformanceToolkit = $true }
 
     $settings.appDependencies + $settings.testDependencies | ForEach-Object {
         $dep = $_
