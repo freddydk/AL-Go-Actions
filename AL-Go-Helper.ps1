@@ -373,6 +373,7 @@ function ReadSettings {
         "appFolders"                             = @()
         "testDependencies"                       = @()
         "testFolders"                            = @()
+        "bcptTestFolders"                            = @()
         "installApps"                            = @()
         "installTestApps"                        = @()
         "installOnlyReferencedApps"              = $true
