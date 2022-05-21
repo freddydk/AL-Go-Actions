@@ -271,6 +271,7 @@ try {
         -rulesetFile $repo.rulesetFile `
         -AppSourceCopMandatoryAffixes $repo.appSourceCopMandatoryAffixes `
         -additionalCountries $additionalCountries `
+        -obsoleteTagMinAllowedMajorMinor $repo.obsoleteTagMinAllowedMajorMinor `
         -buildArtifactFolder $buildArtifactFolder `
         -CreateRuntimePackages:$CreateRuntimePackages `
         -appBuild $appBuild -appRevision $appRevision `

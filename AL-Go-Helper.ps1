@@ -394,6 +394,7 @@ function ReadSettings {
         "doNotPublishApps"                       = $false
         "doNotSignApps"                          = $false
         "appSourceCopMandatoryAffixes"           = @()
+        "obsoleteTagMinAllowedMajorMinor"        = ""
         "memoryLimit"                            = ""
         "templateUrl"                            = ""
         "templateBranch"                         = ""
@@ -1269,6 +1270,7 @@ function CreateDevEnv {
             -failOn $repo.failOn `
             -rulesetFile $repo.rulesetFile `
             -AppSourceCopMandatoryAffixes $repo.appSourceCopMandatoryAffixes `
+            -obsoleteTagMinAllowedMajorMinor $repo.obsoleteTagMinAllowedMajorMinor `
             -doNotRunTests `
             -useDevEndpoint `
             -keepContainer
