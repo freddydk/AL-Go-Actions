@@ -71,6 +71,7 @@ function UpdateManifest
 
 function UpdateALFile 
 (
+    [string] $sourceFolder = $alTemplatePath,
     [string] $destinationFolder,
     [string] $alFileName,
     [int] $fromId = 50100,
@@ -78,12 +79,12 @@ function UpdateALFile
     [int] $startId
 ) 
 {
-    $al = Get-Content -Encoding UTF8 -Raw -path "$($alTemplatePath)\$alFileName"
+    $al = Get-Content -Encoding UTF8 -Raw -path (Join-Path $sourceFolder $alFileName)
     $fromId..$toId | ForEach-Object {
         $al = $al.Replace("$_", $startId)
         $startId++
     }
-    Set-Content -Path "$($destinationFolder)\$($alFileName)" -value $al -Encoding UTF8
+    Set-Content -Path (Join-Path $destinationFolder $alFileName) -value $al -Encoding UTF8
 }
 
 <#
@@ -190,7 +191,7 @@ function New-SamplePerformanceTestApp
 
     if ($sampleCode) {
         Get-ChildItem -Path "$($destinationPath)\src\*.al" | ForEach-Object {
-            UpdateALFile -destinationFolder $_.Directory -alFileName $_.name -fromId 149100 -toId 149200 -startId $idrange[0]
+            UpdateALFile -sourceFolder $_.Directory -destinationFolder $_.Directory -alFileName $_.name -fromId 149100 -toId 149200 -startId $idrange[0]
         }
     }
     else {
