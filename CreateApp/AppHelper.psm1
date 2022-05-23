@@ -32,6 +32,7 @@ function Confirm-IdRanges([string] $templateType, [string]$idrange ) {
 
 function UpdateManifest
 (
+    [string] $sourceFolder = $alTemplatePath,
     [string] $appJsonFile,
     [string] $name,
     [string] $publisher,
@@ -41,7 +42,7 @@ function UpdateManifest
 ) 
 {
     #Modify app.json
-    $appJson = Get-Content "$($alTemplatePath)\app.json" -Encoding UTF8 | ConvertFrom-Json
+    $appJson = Get-Content (Join-Path $sourceFolder "app.json") -Encoding UTF8 | ConvertFrom-Json
 
     $appJson.id = [Guid]::NewGuid().ToString()
     $appJson.Publisher = $publisher
@@ -187,7 +188,7 @@ function New-SamplePerformanceTestApp
     
     UpdateManifest -appJsonFile "$($destinationPath)\app.json" -name $name -publisher $publisher -idrange $idrange -version $version
 
-    Get-ChildItem -Path $destinationPath -Recurse | % { write-host $_.FullName }
+    Get-ChildItem -Path "$($destinationPath)\*"  -Recurse | % { write-host $_.FullName }
 
     if ($sampleCode) {
         Get-ChildItem -Path "$($destinationPath)\src\*.al" | ForEach-Object {
