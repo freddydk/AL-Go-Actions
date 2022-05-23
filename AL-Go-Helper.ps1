@@ -533,8 +533,6 @@ function AnalyzeRepo {
         }
     }
 
-    $settings | Out-Host
-
     Write-Host "Checking appFolders and testFolders"
     $dependencies = [ordered]@{}
     1..3 | ForEach-Object {
@@ -620,8 +618,6 @@ function AnalyzeRepo {
     }
     Write-Host "Application Dependency $($settings.applicationDependency)"
 
-$settings | Out-Host
-
     if (!$doNotCheckArtifactSetting) {
         Write-Host "Checking artifact setting"
         if ($artifact -eq "" -and $settings.updateDependencies) {
@@ -704,17 +700,13 @@ $settings | Out-Host
         }
     }
 
-$settings | Out-Host
-
-# unpack all dependencies and update app- and test dependencies from dependency apps
+    # unpack all dependencies and update app- and test dependencies from dependency apps
     $settings.appDependencies + $settings.testDependencies | ForEach-Object {
         $dep = $_
         if ($dep -is [string]) {
             # TODO: handle pre-settings - documentation pending
         }
     }
-
-$settings | Out-Host
 
     Write-Host "Updating app- and test Dependencies"
     $dependencies.Keys | ForEach-Object {
@@ -735,8 +727,6 @@ $settings | Out-Host
             }
         }
     }
-
-$settings | Out-Host
 
     Write-Host "Analyzing Test App Dependencies"
     if ($settings.testFolders) { $settings.installTestRunner = $true }

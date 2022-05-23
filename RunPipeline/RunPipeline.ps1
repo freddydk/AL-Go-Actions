@@ -263,6 +263,7 @@ try {
         -previousApps $previousApps `
         -appFolders $repo.appFolders `
         -testFolders $repo.testFolders `
+        -bcptTestFolders $repo.bcptTestFolders `
         -buildOutputFile $buildOutputFile `
         -testResultsFile $testResultsFile `
         -testResultsFormat 'JUnit' `
