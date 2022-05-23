@@ -169,7 +169,7 @@ function New-SamplePerformanceTestApp
         $bcptSampleTestFolder = Join-Path $tempFolder 'ALAppExtensions-main\Other\Tests\BCPT-SampleTests'
         if (Test-Path $bcptSampleTestFolder -PathType Container) {
             Write-Host $bcptSampleTestFolder
-            Copy-Item -Path "$bcptSampleTestFolder\*" -Destination $alTemplatePath -Recurse -Force
+            Copy-Item -Path "$bcptSampleTestFolder\*" -Destination $destinationPath -Recurse -Force
         }
         else {
             throw "Unable to locate BCPT-SampleTests on https://github.com/microsoft/ALAppExtensions, please file an issue on https://github.com/microsoft/AL-Go/issues"
