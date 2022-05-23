@@ -229,6 +229,7 @@ try {
     
     "doNotBuildTests",
     "doNotRunTests",
+    "doNotRunBcptTests",
     "doNotPublishApps",
     "installTestRunner",
     "installTestFramework",

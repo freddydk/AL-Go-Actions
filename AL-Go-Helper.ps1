@@ -392,6 +392,7 @@ function ReadSettings {
         "rulesetFile"                            = ""
         "doNotBuildTests"                        = $false
         "doNotRunTests"                          = $false
+        "doNotRunBcptTests"                      = $false
         "doNotPublishApps"                       = $false
         "doNotSignApps"                          = $false
         "appSourceCopMandatoryAffixes"           = @()
@@ -741,6 +742,10 @@ function AnalyzeRepo {
         }
     }
 
+    if (-not $settings.bcptTestFolders) {
+        # OutputWarning -message "No performance test apps found in bcptTestFolders in $ALGoSettingsFile"
+        $doNotRunBcptTests = $true
+    }
     if (-not $settings.testFolders) {
         OutputWarning -message "No test apps found in testFolders in $ALGoSettingsFile"
         $doNotRunTests = $true
@@ -1273,6 +1278,7 @@ function CreateDevEnv {
             -AppSourceCopMandatoryAffixes $repo.appSourceCopMandatoryAffixes `
             -obsoleteTagMinAllowedMajorMinor $repo.obsoleteTagMinAllowedMajorMinor `
             -doNotRunTests `
+            -doNotRunBcptTests `
             -useDevEndpoint `
             -keepContainer
     }
