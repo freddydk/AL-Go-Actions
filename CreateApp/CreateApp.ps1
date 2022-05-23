@@ -7,7 +7,7 @@ Param(
     [string] $parentTelemetryScopeJson = '{}',
     [Parameter(HelpMessage = "Project name if the repository is setup for multiple projects", Mandatory = $false)]
     [string] $project = '.',
-    [ValidateSet("PTE", "AppSource App" , "Test App")]
+    [ValidateSet("PTE", "AppSource App" , "Test App", "Performance Test App")]
     [Parameter(HelpMessage = "Type of app to add (PTE, AppSource App, Test App)", Mandatory = $true)]
     [string] $type,
     [Parameter(HelpMessage = "App Name", Mandatory = $true)]
