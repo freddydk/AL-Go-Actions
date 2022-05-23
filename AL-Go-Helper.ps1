@@ -214,7 +214,15 @@ function DownloadAndImportBcContainerHelper {
         if (Test-Path $repoSettingsPath) {
             if (-not $BcContainerHelperVersion) {
                 $repoSettings = Get-Content $repoSettingsPath -Encoding UTF8 | ConvertFrom-Json | ConvertTo-HashTable
-                if ($repoSettings.ContainsKey("BcContainerHelperVersion")) {
+                if ($repoSettings.ContainsKey("templateUrl")) {
+                    if ($repoSettings.templateUrl -like 'https://github.com/freddydk/AL-Go-*@main') {
+                        $bcContainerHelperVersion = "dev"
+                    }
+                    elseif ($repoSettings.templateUrl -like 'https://github.com/microsoft/AL-Go-*@preview') {
+                        $bcContainerHelperVersion = "preview"
+                    }
+                }
+                if ($bcContainerHelperVersion -eq "" -and $repoSettings.ContainsKey("BcContainerHelperVersion")) {
                     $BcContainerHelperVersion = $repoSettings.BcContainerHelperVersion
                 }
             }
