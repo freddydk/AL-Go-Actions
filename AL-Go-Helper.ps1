@@ -215,10 +215,11 @@ function DownloadAndImportBcContainerHelper {
             if (-not $BcContainerHelperVersion) {
                 $repoSettings = Get-Content $repoSettingsPath -Encoding UTF8 | ConvertFrom-Json | ConvertTo-HashTable
                 if ($repoSettings.ContainsKey("templateUrl")) {
-                    if ($repoSettings.templateUrl -like 'https://github.com/freddydk/AL-Go-*@main') {
+                    $githubHost = 'https://github.com'
+                    if ($repoSettings.templateUrl -like "$($githubHost)/freddydk/AL-Go-*@main") {
                         $bcContainerHelperVersion = "dev"
                     }
-                    elseif ($repoSettings.templateUrl -like 'https://github.com/microsoft/AL-Go-*@preview') {
+                    elseif ($repoSettings.templateUrl -like "$($githubHost)/microsoft/AL-Go-*@preview") {
                         $bcContainerHelperVersion = "preview"
                     }
                 }
