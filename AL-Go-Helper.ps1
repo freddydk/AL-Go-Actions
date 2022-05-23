@@ -373,7 +373,7 @@ function ReadSettings {
         "appFolders"                             = @()
         "testDependencies"                       = @()
         "testFolders"                            = @()
-        "bcptTestFolders"                            = @()
+        "bcptTestFolders"                        = @()
         "installApps"                            = @()
         "installTestApps"                        = @()
         "installOnlyReferencedApps"              = $true
@@ -533,6 +533,8 @@ function AnalyzeRepo {
         }
     }
 
+    $settings | Out-Host
+
     Write-Host "Checking appFolders and testFolders"
     $dependencies = [ordered]@{}
     1..3 | ForEach-Object {
@@ -618,6 +620,8 @@ function AnalyzeRepo {
     }
     Write-Host "Application Dependency $($settings.applicationDependency)"
 
+$settings | Out-Host
+
     if (!$doNotCheckArtifactSetting) {
         Write-Host "Checking artifact setting"
         if ($artifact -eq "" -and $settings.updateDependencies) {
@@ -700,13 +704,17 @@ function AnalyzeRepo {
         }
     }
 
-    # unpack all dependencies and update app- and test dependencies from dependency apps
+$settings | Out-Host
+
+# unpack all dependencies and update app- and test dependencies from dependency apps
     $settings.appDependencies + $settings.testDependencies | ForEach-Object {
         $dep = $_
         if ($dep -is [string]) {
             # TODO: handle pre-settings - documentation pending
         }
     }
+
+$settings | Out-Host
 
     Write-Host "Updating app- and test Dependencies"
     $dependencies.Keys | ForEach-Object {
@@ -728,6 +736,8 @@ function AnalyzeRepo {
         }
     }
 
+$settings | Out-Host
+
     Write-Host "Analyzing Test App Dependencies"
     if ($settings.testFolders) { $settings.installTestRunner = $true }
     if ($settings.bcptTestFolders) { $settings.installPerformanceToolkit = $true }
@@ -742,11 +752,11 @@ function AnalyzeRepo {
         }
     }
 
-    if (-not $settings.bcptTestFolders) {
-        # OutputWarning -message "No performance test apps found in bcptTestFolders in $ALGoSettingsFile"
+    if (!$doNotRunBcptTests -and -not $settings.bcptTestFolders) {
+        OutputWarning -message "No performance test apps found in bcptTestFolders in $ALGoSettingsFile"
         $doNotRunBcptTests = $true
     }
-    if (-not $settings.testFolders) {
+    if (!$doNotRunTests -and -not $settings.testFolders) {
         OutputWarning -message "No test apps found in testFolders in $ALGoSettingsFile"
         $doNotRunTests = $true
     }
