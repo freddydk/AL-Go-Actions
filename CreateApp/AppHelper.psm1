@@ -186,7 +186,7 @@ function New-SamplePerformanceTestApp
     
     UpdateManifest -appJsonFile "$($destinationPath)\app.json" -name $name -publisher $publisher -idrange $idrange -version $version
 
-    Get-ChildItem -Path $destinationPath -Recurse | % { out-host $_.FullName }
+    Get-ChildItem -Path $destinationPath -Recurse | % { write-host $_.FullName }
 
     if ($sampleCode) {
         Get-ChildItem -Path "$($destinationPath)\src\*.al" | ForEach-Object {
