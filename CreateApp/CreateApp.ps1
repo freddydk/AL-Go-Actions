@@ -16,6 +16,8 @@ Param(
     [string] $publisher,
     [Parameter(HelpMessage = "ID range", Mandatory = $true)]
     [string] $idrange,
+    [Parameter(HelpMessage = "Include Sample Code (Y/N)", Mandatory = $false)]
+    [bool] $sampleCode,
     [Parameter(HelpMessage = "Direct Commit (Y/N)", Mandatory = $false)]
     [bool] $directCommit
 )
@@ -65,7 +67,12 @@ try {
         $settingsJsonFile = Join-Path $baseFolder $ALGoSettingsFile
         $SettingsJson = Get-Content $settingsJsonFile -Encoding UTF8 | ConvertFrom-Json
         if (@($settingsJson.appFolders)+@($settingsJson.testFolders)) {
-            if ($type -eq "Test App") {
+            if ($type -eq "Performance Test App") {
+                if ($SettingsJson.bcptTestFolders -notcontains $foldername) {
+                    $SettingsJson.bcptTestFolders += @($folderName)
+                }
+            }
+            elseif ($type -eq "Test App") {
                 if ($SettingsJson.testFolders -notcontains $foldername) {
                     $SettingsJson.testFolders += @($folderName)
                 }
@@ -87,7 +94,10 @@ try {
         $appVersion = "$($settingsJson.AppVersion).0.0"
     }
 
-    if ($type -eq "Test App") {
+    if ($type -eq "Performance Test App") {
+        New-SamplePerformanceTestApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -idrange $ids
+    }
+    elseif ($type -eq "Test App") {
         New-SampleTestApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -idrange $ids
     }
     else {
