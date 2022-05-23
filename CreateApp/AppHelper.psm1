@@ -219,5 +219,6 @@ function Update-WorkSpaces
 
 Export-ModuleMember -Function New-SampleApp
 Export-ModuleMember -Function New-SampleTestApp
+Export-ModuleMember -Function New-SamplePerformanceTestApp
 Export-ModuleMember -Function Confirm-IdRanges
 Export-ModuleMember -Function Update-WorkSpaces
