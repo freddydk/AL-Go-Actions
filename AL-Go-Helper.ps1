@@ -752,13 +752,13 @@ $settings | Out-Host
         }
     }
 
-    if (!$doNotRunBcptTests -and -not $settings.bcptTestFolders) {
+    if (!$settings.doNotRunBcptTests -and -not $settings.bcptTestFolders) {
         OutputWarning -message "No performance test apps found in bcptTestFolders in $ALGoSettingsFile"
-        $doNotRunBcptTests = $true
+        $settings.doNotRunBcptTests = $true
     }
-    if (!$doNotRunTests -and -not $settings.testFolders) {
+    if (!$settings.doNotRunTests -and -not $settings.testFolders) {
         OutputWarning -message "No test apps found in testFolders in $ALGoSettingsFile"
-        $doNotRunTests = $true
+        $settings.doNotRunTests = $true
     }
     if (-not $settings.appFolders) {
         OutputWarning -message "No apps found in appFolders in $ALGoSettingsFile"
