@@ -573,15 +573,15 @@ function AnalyzeRepo {
             $bcptSuiteFile = Join-Path $folder "bcptSuite.json"
             $removeFolder = $false
             if (-not (Test-Path $folder -PathType Container)) {
-                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not exist."
+                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not exist"
                 $removeFolder = $true
             }
             elseif (-not (Test-Path $appJsonFile -PathType Leaf)) {
-                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain the source code for an app (no app.json file)."
+                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain the source code for an app (no app.json file)"
                 $removeFolder = $true
             }
             elseif ($bcptTestFolder -and (-not (Test-Path $bcptSuiteFile -PathType Leaf))) {
-                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain a bcptSuite.json file."
+                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain a BCPT Suite (bcptSuite.json)"
                 $removeFolder = $true
             }
             if ($removeFolder) {
