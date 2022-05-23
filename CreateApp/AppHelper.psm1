@@ -188,11 +188,12 @@ function New-SamplePerformanceTestApp
     
     UpdateManifest -appJsonFile "$($destinationPath)\app.json" -name $name -publisher $publisher -idrange $idrange -version $version
 
-    Get-ChildItem -Path "$($destinationPath)\*"  -Recurse | % { write-host $_.FullName }
+    Get-ChildItem -Path "$($destinationPath)\*"  -Recurse | % { write-host $_.FullName; write-Host $_.Directory }
 
     if ($sampleCode) {
-        Get-ChildItem -Path "$($destinationPath)\src\*.al" | ForEach-Object {
-            UpdateALFile -sourceFolder $_.Directory -destinationFolder $_.Directory -alFileName $_.name -fromId 149100 -toId 149200 -startId $idrange[0]
+        Get-ChildItem -Path "$($destinationPath)\src\*.al"  | ForEach-Object {
+            Write-Host $_.FullName
+            UpdateALFile -sourceFolder $_.DirectoryName -destinationFolder $_.DirectoryName -alFileName $_.name -fromId 149100 -toId 149200 -startId $idrange[0]
         }
     }
     else {
