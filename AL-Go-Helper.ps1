@@ -580,7 +580,7 @@ function AnalyzeRepo {
                 OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain the source code for an app (no app.json file)."
                 $removeFolder = $true
             }
-            elseif (-not (Test-Path $bcptSuiteFile -PathType Leaf)) {
+            elseif ($bcptTestFolder -and (-not (Test-Path $bcptSuiteFile -PathType Leaf))) {
                 OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain a bcptSuite.json file."
                 $removeFolder = $true
             }
