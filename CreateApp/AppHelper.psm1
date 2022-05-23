@@ -168,6 +168,7 @@ function New-SamplePerformanceTestApp
         Expand-7zipArchive -Path "$tempFolder.zip" -DestinationPath $tempFolder
         $bcptSampleTestFolder = Join-Path $tempFolder 'ALAppExtensions-main\Other\Tests\BCPT-SampleTests'
         if (Test-Path $bcptSampleTestFolder -PathType Container) {
+            Write-Host $bcptSampleTestFolder
             Copy-Item -Path "$bcptSampleTestFolder\*" -Destination $alTemplatePath -Recurse -Force
         }
         else {
@@ -184,6 +185,9 @@ function New-SamplePerformanceTestApp
     }
     
     UpdateManifest -appJsonFile "$($destinationPath)\app.json" -name $name -publisher $publisher -idrange $idrange -version $version
+
+    Get-ChildItem -Path $destinationPath -Recurse | % { out-host $_.FullName }
+
     if ($sampleCode) {
         Get-ChildItem -Path "$($destinationPath)\src\*.al" | ForEach-Object {
             UpdateALFile -destinationFolder $_.Directory -alFileName $_.name -fromId 149100 -toId 149200 -startId $idrange[0]
