@@ -36,7 +36,7 @@ inputs:
     description: Include Sample Code (Y/N)
     required: false
     default: 'N'
-  sampleCode:
+  sampleSuite:
     description: Include Sample BCPT Suite (Y/N)
     required: false
     default: 'N'
