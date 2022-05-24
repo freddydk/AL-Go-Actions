@@ -156,7 +156,8 @@ function New-SamplePerformanceTestApp
     [string] $publisher,
     [string] $version,
     [string[]] $idrange,
-    [bool] $sampleCode
+    [bool] $sampleCode,
+    [bool] $sampleSuite
 ) 
 {
     Write-Host "Creating a new performance test app in: $destinationPath"
@@ -197,6 +198,9 @@ function New-SamplePerformanceTestApp
     }
     else {
         Remove-Item -path "$($destinationPath)\src\*.al" -Force
+    }
+    if ($sampleSuite) {
+        Copy-Item -path "$($alTemplatePath)\bcptSuite.json" -Destination "$($destinationPath)\bcptSuite.json"
     }
 }
 
