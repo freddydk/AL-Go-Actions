@@ -200,7 +200,7 @@ function New-SamplePerformanceTestApp
         Remove-Item -path "$($destinationPath)\src\*.al" -Force
     }
     if ($sampleSuite) {
-        Copy-Item -path "$($alTemplatePath)\bcptSuite.json" -Destination "$($destinationPath)\bcptSuite.json"
+        UpdateALFile -sourceFolder $alTemplatePath -destinationFolder $destinationPath -alFileName bcptSuite.json -fromId 149100 -toId 149200 -startId $idrange[0]
     }
 }
 
