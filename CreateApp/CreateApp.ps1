@@ -18,6 +18,8 @@ Param(
     [string] $idrange,
     [Parameter(HelpMessage = "Include Sample Code (Y/N)", Mandatory = $false)]
     [bool] $sampleCode,
+    [Parameter(HelpMessage = "Include Sample BCPT Suite (Y/N)", Mandatory = $false)]
+    [bool] $sampleSuite,
     [Parameter(HelpMessage = "Direct Commit (Y/N)", Mandatory = $false)]
     [bool] $directCommit
 )
