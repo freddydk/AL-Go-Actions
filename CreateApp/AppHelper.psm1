@@ -188,7 +188,7 @@ function New-SamplePerformanceTestApp
         }
     }
     
-    UpdateManifest -appJsonFile "$($destinationPath)\app.json" -name $name -publisher $publisher -idrange $idrange -version $version
+    UpdateManifest -sourceFolder $destinationPath -appJsonFile "$($destinationPath)\app.json" -name $name -publisher $publisher -idrange $idrange -version $version
 
     if ($sampleCode) {
         Get-ChildItem -Path "$($destinationPath)\src\*.al" -Recurse | ForEach-Object {
