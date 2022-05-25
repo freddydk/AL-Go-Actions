@@ -205,6 +205,8 @@ function DownloadAndImportBcContainerHelper {
         [string] $baseFolder = ""
     )
 
+    dir env: | Out-Host
+    
     $params = @{ "ExportTelemetryFunctions" = $true }
     if ($baseFolder) {
         $repoSettingsPath = Join-Path $baseFolder $repoSettingsFile
