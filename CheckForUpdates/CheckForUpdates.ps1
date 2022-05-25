@@ -245,7 +245,7 @@ try {
                     if (([System.IO.Path]::GetFileName($_.DstFile) -eq "RELEASENOTES.copy.md") -and (Test-Path $_.DstFile)) {
                         $oldReleaseNotes = (Get-Content -Path $_.DstFile -Encoding UTF8 -Raw).Replace("`r", "").TrimEnd("`n").Replace("`n", "`r`n")
                         $idx = $oldReleaseNotes.IndexOf("`r`n### ")
-                        if ($idx -gt 0) { $oldReleaseNotes = $oldReleaseNotes.Substring(0,$idx) }
+                        if ($idx -gt 0) { $oldReleaseNotes = $oldReleaseNotes.Substring($idx) }
                         Write-Host "OLDRELNOTES: $oldReleaseNotes"
                         $releaseNotes = $_.Content
                         $idx = $releaseNotes.indexOf($oldReleaseNotes)
