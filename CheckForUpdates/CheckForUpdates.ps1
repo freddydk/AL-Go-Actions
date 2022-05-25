@@ -101,9 +101,7 @@ try {
     $headers = @{             
         "Accept" = "application/vnd.github.baptiste-preview+json"
     }
-    Write-Host "TemplateInfo: $templateInfo"
     $archiveUrl = $templateInfo.archive_url.Replace('{archive_format}','zipball').replace('{/ref}',"/$templateBranch")
-    Write-Host "ArchiveUrl: $archiveUrl"
     $tempName = Join-Path $env:TEMP ([Guid]::NewGuid().ToString())
     Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $archiveUrl -OutFile "$tempName.zip"
     Expand-7zipArchive -Path "$tempName.zip" -DestinationPath $tempName
@@ -260,14 +258,8 @@ try {
                         invoke-git push $url
                     }
                     else {
-$body = @"
-## v1.4
-
-### All workflows
-- Add requested permissions to avoid dependency on user/org defaults being too permissive
-"@                        
                         invoke-git push -u $url $branch
-                        invoke-gh pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY --body $body
+                        invoke-gh pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY
                     }
                 }
                 else {
