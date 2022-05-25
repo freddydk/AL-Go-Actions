@@ -75,7 +75,7 @@ function Test-ALGoRepository {
     }
 }
 
-functon Write-Big {
+function Write-Big {
 Param(
     [string] $str
 )
