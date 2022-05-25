@@ -15,7 +15,6 @@ try {
 
     $ap = "$ENV:GITHUB_ACTION_PATH".Split('\')
     $branch = $ap[$ap.Count-2]
-    $repo = $ap[$ap.Count-3]
     $owner = $ap[$ap.Count-4]
 
     if ($owner -ne "microsoft") {
