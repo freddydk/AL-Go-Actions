@@ -473,7 +473,6 @@ function AnalyzeRepo {
     # Check applicationDependency
     [Version]$settings.applicationDependency | Out-null
 
-
     Write-Host "Checking type"
     if ($settings.type -eq "PTE") {
         if (!$settings.Contains('enablePerTenantExtensionCop')) {

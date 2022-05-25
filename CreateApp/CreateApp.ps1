@@ -59,12 +59,10 @@ try {
     CheckAndCreateProjectFolder -project $project
     $baseFolder = (Get-Location).Path
 
-    $settingsJsonFile = Join-Path $baseFolder $ALGoSettingsFile
-    $SettingsJson = Get-Content $settingsJsonFile -Encoding UTF8 | ConvertFrom-Json
-
     if ($type -eq "Performance Test App") {
         try {
-            $settings = AnalyzeRepo -settings ($settingsJson | ConvertTo-HashTable) -baseFolder $baseFolder
+            $settings = ReadSettings -baseFolder $baseFolder -repoName $env:GITHUB_REPOSITORY -workflowName $env:GITHUB_WORKFLOW
+            $settings = AnalyzeRepo -settings $settings -baseFolder $baseFolder
             $folders = Download-Artifacts -artifactUrl $settings.artifact -includePlatform
             $sampleApp = Join-Path $folders[0] "Applications.*\Microsoft_Performance Toolkit Samples_*.app"
             if (Test-Path $sampleApp) {
@@ -91,6 +89,8 @@ try {
 
     # Modify .AL-Go\settings.json
     try {
+        $settingsJsonFile = Join-Path $baseFolder $ALGoSettingsFile
+        $SettingsJson = Get-Content $settingsJsonFile -Encoding UTF8 | ConvertFrom-Json
         if (@($settingsJson.appFolders)+@($settingsJson.testFolders)) {
             if ($type -eq "Performance Test App") {
                 if ($SettingsJson.bcptTestFolders -notcontains $foldername) {
