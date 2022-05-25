@@ -463,7 +463,8 @@ function AnalyzeRepo {
         [hashTable] $settings,
         [string] $baseFolder,
         [string] $insiderSasToken,
-        [switch] $doNotCheckArtifactSetting
+        [switch] $doNotCheckArtifactSetting,
+        [switch] $doNotIssueWarnings
     )
 
     if (!$runningLocal) {
@@ -572,15 +573,15 @@ function AnalyzeRepo {
             $bcptSuiteFile = Join-Path $folder "bcptSuite.json"
             $removeFolder = $false
             if (-not (Test-Path $folder -PathType Container)) {
-                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not exist"
+                if (!$doNotIssueWarnings) { OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not exist" }
                 $removeFolder = $true
             }
             elseif (-not (Test-Path $appJsonFile -PathType Leaf)) {
-                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain the source code for an app (no app.json file)"
+                if (!$doNotIssueWarnings) { OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain the source code for an app (no app.json file)" }
                 $removeFolder = $true
             }
             elseif ($bcptTestFolder -and (-not (Test-Path $bcptSuiteFile -PathType Leaf))) {
-                OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain a BCPT Suite (bcptSuite.json)"
+                if (!$doNotIssueWarnings) { OutputWarning -message "$descr $folderName, specified in $ALGoSettingsFile, does not contain a BCPT Suite (bcptSuite.json)" }
                 $removeFolder = $true
             }
             if ($removeFolder) {
@@ -673,7 +674,7 @@ function AnalyzeRepo {
         }
     
         if ($settings.additionalCountries -or $country -ne $settings.country) {
-            if ($country -ne $settings.country) {
+            if ($country -ne $settings.country -and !$doNotIssueWarnings) {
                 OutputWarning -message "artifact definition in $ALGoSettingsFile uses a different country ($country) than the country definition ($($settings.country))"
             }
             Write-Host "Checking Country and additionalCountries"
@@ -756,15 +757,15 @@ function AnalyzeRepo {
     }
 
     if (!$settings.doNotRunBcptTests -and -not $settings.bcptTestFolders) {
-        OutputWarning -message "No performance test apps found in bcptTestFolders in $ALGoSettingsFile"
+        if (!$doNotIssueWarnings) { OutputWarning -message "No performance test apps found in bcptTestFolders in $ALGoSettingsFile" }
         $settings.doNotRunBcptTests = $true
     }
     if (!$settings.doNotRunTests -and -not $settings.testFolders) {
-        OutputWarning -message "No test apps found in testFolders in $ALGoSettingsFile"
+        if (!$doNotIssueWarnings) { OutputWarning -message "No test apps found in testFolders in $ALGoSettingsFile" }
         $settings.doNotRunTests = $true
     }
     if (-not $settings.appFolders) {
-        OutputWarning -message "No apps found in appFolders in $ALGoSettingsFile"
+        if (!$doNotIssueWarnings) { OutputWarning -message "No apps found in appFolders in $ALGoSettingsFile" }
     }
 
     $settings
