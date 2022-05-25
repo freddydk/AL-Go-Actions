@@ -236,7 +236,7 @@ try {
                 }
                 $repoSettings | ConvertTo-Json -Depth 99 | Set-Content $repoSettingsFile -Encoding UTF8
 
-                $releasenotes = "Updated AL-Go System Files"
+                $releaseNotes = ""
                 $updateFiles | ForEach-Object {
                     $path = [System.IO.Path]::GetDirectoryName($_.DstFile)
                     if (-not (Test-Path -path $path -PathType Container)) {
@@ -263,6 +263,9 @@ try {
                     }
                     Write-Host "Update $($_.DstFile)"
                     Set-Content -Path $_.DstFile -Encoding UTF8 -Value $_.Content
+                }
+                if ($releaseNotes -eq "") {
+                    $releaseNotes = "No release notes available!"
                 }
                 $removeFiles | ForEach-Object {
                     Write-Host "Remove $_"
