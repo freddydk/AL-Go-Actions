@@ -244,12 +244,21 @@ try {
                     }
                     if (([System.IO.Path]::GetFileName($_.DstFile) -eq "RELEASENOTES.copy.md") -and (Test-Path $_.DstFile)) {
                         $oldReleaseNotes = (Get-Content -Path $_.DstFile -Encoding UTF8 -Raw).Replace("`r", "").TrimEnd("`n").Replace("`n", "`r`n")
-                        $idx = $oldReleaseNotes.IndexOf("`r`n### ")
-                        if ($idx -gt 0) { $oldReleaseNotes = $oldReleaseNotes.Substring($idx,100) }
-                        $releaseNotes = $_.Content
-                        $idx = $releaseNotes.indexOf($oldReleaseNotes)
-                        if ($idx -gt 0) {
-                            $releaseNotes = $releaseNotes.SubString(0, $idx)
+                        while ($oldReleaseNotes) {
+                            $releaseNotes = $_.Content
+                            if ($releaseNotes.indexOf($oldReleaseNotes) -gt 0) {
+                                $releaseNotes = $releaseNotes.SubString(0, $releaseNotes.indexOf($oldReleaseNotes))
+                                $oldReleaseNotes = ""
+                            }
+                            else {
+                                $idx = $oldReleaseNotes.IndexOf("`r`n## ")
+                                if ($idx -gt 0) {
+                                    $oldReleaseNotes = $oldReleaseNotes.Substring($idx)
+                                }
+                                else {
+                                    $oldReleaseNotes = ""
+                                }
+                            }
                         }
                     }
                     Write-Host "Update $($_.DstFile)"
