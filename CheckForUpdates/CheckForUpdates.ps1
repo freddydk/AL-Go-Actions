@@ -258,8 +258,14 @@ try {
                         invoke-git push $url
                     }
                     else {
+$body = @"
+## v1.4
+
+### All workflows
+- Add requested permissions to avoid dependency on user/org defaults being too permissive
+"@                        
                         invoke-git push -u $url $branch
-                        invoke-gh pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY
+                        invoke-gh pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY --body $body
                     }
                 }
                 else {
