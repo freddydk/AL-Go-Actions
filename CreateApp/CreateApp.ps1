@@ -28,6 +28,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 $telemetryScope = $null
 $bcContainerHelperPath = $null
+$tmpFolder = Join-Path $env:TEMP ([Guid]::NewGuid().ToString())
 
 # IMPORTANT: No code that can fail should be outside the try/catch
 
@@ -58,6 +59,30 @@ try {
     CheckAndCreateProjectFolder -project $project
     $baseFolder = (Get-Location).Path
 
+    $settingsJsonFile = Join-Path $baseFolder $ALGoSettingsFile
+    $SettingsJson = Get-Content $settingsJsonFile -Encoding UTF8 | ConvertFrom-Json
+
+    if ($type -eq "Performance Test App") {
+        try {
+            $settings = AnalyzeRepo -settings ($settingsJson | ConvertTo-HashTable) -baseFolder $baseFolder
+            $folders = Download-Artifacts -artifactUrl $settings.artifact -includePlatform
+            $sampleApp = Join-Path $folders[0] "Applications.*\Microsoft_Performance Toolkit Samples_*.app"
+            if (Test-Path $sampleApp) {
+                $sampleApp = (Get-Item -Path $sampleApp).FullName
+            }
+            else {
+                $sampleApp = Join-Path $folders[1] "Applications\testframework\performancetoolkit\Microsoft_Performance Toolkit Samples.app"
+            }
+            if (!(Test-Path -Path $sampleApp)) {
+                throw "Could not locate sample app for the Business Central version"
+            }
+            Extract-AppFileToFolder -appFilename $sampleApp -generateAppJson -appFolder $tmpFolder
+        }
+        catch {
+            throw "Unable to create performance test app. Error was $($_.Exception.Message)"
+        }
+    }
+
     $orgfolderName = $name.Split([System.IO.Path]::getInvalidFileNameChars()) -join ""
     $folderName = GetUniqueFolderName -baseFolder $baseFolder -folderName $orgfolderName
     if ($folderName -ne $orgfolderName) {
@@ -66,8 +91,6 @@ try {
 
     # Modify .AL-Go\settings.json
     try {
-        $settingsJsonFile = Join-Path $baseFolder $ALGoSettingsFile
-        $SettingsJson = Get-Content $settingsJsonFile -Encoding UTF8 | ConvertFrom-Json
         if (@($settingsJson.appFolders)+@($settingsJson.testFolders)) {
             if ($type -eq "Performance Test App") {
                 if ($SettingsJson.bcptTestFolders -notcontains $foldername) {
@@ -97,7 +120,7 @@ try {
     }
 
     if ($type -eq "Performance Test App") {
-        New-SamplePerformanceTestApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -sampleSuite $sampleSuite -idrange $ids
+        New-SamplePerformanceTestApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -sampleSuite $sampleSuite -idrange $ids -appSourceFolder $tmpFolder
     }
     elseif ($type -eq "Test App") {
         New-SampleTestApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -idrange $ids
@@ -120,4 +143,7 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
+    if (Test-Path $tmpFolder) {
+        Remove-Item $tmpFolder -Recurse -Force
+    }
 }

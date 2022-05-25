@@ -83,7 +83,7 @@ function ConvertTo-HashTable {
     )
     $ht = @{}
     if ($object) {
-        $object.PSObject.Properties | Foreach { $ht[$_.Name] = $_.Value }
+        $object.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
     }
     $ht
 }
@@ -328,7 +328,7 @@ function MergeCustomObjectIntoOrderedDictionary {
                         $srcElmType = $srcElm.GetType().Name
                         if ($srcElmType -eq "PSCustomObject") {
                             $ht = [ordered]@{}
-                            $srcElm.PSObject.Properties | Sort-Object -Property Name -Culture "iv-iv" | Foreach { $ht[$_.Name] = $_.Value }
+                            $srcElm.PSObject.Properties | Sort-Object -Property Name -Culture "iv-iv" | ForEach-Object { $ht[$_.Name] = $_.Value }
                             $dst."$prop" += @($ht)
                         }
                         else {
@@ -1311,7 +1311,7 @@ function ConvertTo-HashTable() {
     )
     $ht = @{}
     if ($object) {
-        $object.PSObject.Properties | Foreach { $ht[$_.Name] = $_.Value }
+        $object.PSObject.Properties | ForEach-Object { $ht[$_.Name] = $_.Value }
     }
     $ht
 }
