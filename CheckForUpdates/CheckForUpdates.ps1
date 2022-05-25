@@ -236,10 +236,20 @@ try {
                 }
                 $repoSettings | ConvertTo-Json -Depth 99 | Set-Content $repoSettingsFile -Encoding UTF8
 
+                $releasenotes = "Updated AL-Go System Files"
                 $updateFiles | ForEach-Object {
                     $path = [System.IO.Path]::GetDirectoryName($_.DstFile)
                     if (-not (Test-Path -path $path -PathType Container)) {
                         New-Item -Path $path -ItemType Directory | Out-Null
+                    }
+                    if (([System.IO.Path]::GetFileName($_.DstFile) -eq "RELEASENOTES.copy.md") -and (Test-Path $_.DstFile)) {
+                        $oldReleaseNotes = Get-Content -Path $_.DstFile -Encoding UTF8
+                        $line = $oldReleaseNotes | Where-Object { $_ -like "### *" } | Select-Object -First 1
+                        $oldstr = @($oldReleaseNotes | Select-Object -Skip $oldReleaseNotes.IndexOf($line)) -join "`n"
+                        $releaseNotes = $_.Content -join "`n"
+                        if ($releaseNotes.indexOf($oldStr) -gt 0) {
+                            $releaseNotes = $releaseNotes.SubString(0,$releaseNotes.indexOf($oldStr))
+                        }
                     }
                     Write-Host "Update $($_.DstFile)"
                     Set-Content -Path $_.DstFile -Encoding UTF8 -Value $_.Content
@@ -250,6 +260,9 @@ try {
                 }
 
                 invoke-git add *
+
+                Write-Host "ReleaseNotes:"
+                Write-Host $releaseNotes
 
                 $status = invoke-git status --porcelain=v1
                 if ($status) {
@@ -262,7 +275,7 @@ try {
                     }
                     else {
                         invoke-git push -u $url $branch
-                        invoke-gh pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY
+                        invoke-gh pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY --body "$releaseNotes"
                     }
                 }
                 else {
