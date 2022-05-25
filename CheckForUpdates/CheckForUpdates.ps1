@@ -243,12 +243,14 @@ try {
                         New-Item -Path $path -ItemType Directory | Out-Null
                     }
                     if (([System.IO.Path]::GetFileName($_.DstFile) -eq "RELEASENOTES.copy.md") -and (Test-Path $_.DstFile)) {
-                        $oldReleaseNotes = Get-Content -Path $_.DstFile -Encoding UTF8
-                        $line = $oldReleaseNotes | Where-Object { $_ -like "### *" } | Select-Object -First 1
-                        $oldstr = @($oldReleaseNotes | Select-Object -Skip $oldReleaseNotes.IndexOf($line)) -join "`n"
-                        $releaseNotes = $_.Content -join "`n"
-                        if ($releaseNotes.indexOf($oldStr) -gt 0) {
-                            $releaseNotes = $releaseNotes.SubString(0,$releaseNotes.indexOf($oldStr))
+                        $oldReleaseNotes = (Get-Content -Path $_.DstFile -Encoding UTF8 -Raw).Replace("`r", "").TrimEnd("`n").Replace("`n", "`r`n")
+                        $idx = $oldReleaseNotes.IndexOf("`r`n### ")
+                        if ($idx -gt 0) { $oldReleaseNotes = $oldReleaseNotes.Substring(0,$idx) }
+                        Write-Host "OLDRELNOTES: $oldReleaseNotes"
+                        $releaseNotes = $_.Content
+                        $idx = $releaseNotes.indexOf($oldReleaseNotes)
+                        if ($idx -gt 0) {
+                            $releaseNotes = $releaseNotes.SubString(0, $idx)
                         }
                     }
                     Write-Host "Update $($_.DstFile)"
