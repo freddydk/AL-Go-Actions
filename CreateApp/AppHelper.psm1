@@ -53,7 +53,9 @@ function UpdateManifest
     $appJson.EULA = ""
     $appJson.privacyStatement = ""
     $appJson.help = ""
-    $appJson.contextSensitiveHelpUrl = ""
+    "contextSensitiveHelpUrl" | ForEach-Object {
+        if ($appJson.PSObject.Properties.Name -eq $_) { $appJson.PSObject.Properties.Remove($_) }
+    }
     $appJson.idRanges[0].from = [int]$idrange[0]
     $appJson.idRanges[0].to = [int]$idrange[1]
     if ($AddTestDependencies) {
