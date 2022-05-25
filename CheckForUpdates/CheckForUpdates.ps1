@@ -101,7 +101,9 @@ try {
     $headers = @{             
         "Accept" = "application/vnd.github.baptiste-preview+json"
     }
+    Write-Host "TemplateInfo: $templateInfo"
     $archiveUrl = $templateInfo.archive_url.Replace('{archive_format}','zipball').replace('{/ref}',"/$templateBranch")
+    Write-Host "ArchiveUrl: $archiveUrl"
     $tempName = Join-Path $env:TEMP ([Guid]::NewGuid().ToString())
     Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $archiveUrl -OutFile "$tempName.zip"
     Expand-7zipArchive -Path "$tempName.zip" -DestinationPath $tempName
