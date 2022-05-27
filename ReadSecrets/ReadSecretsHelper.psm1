@@ -21,6 +21,9 @@ function MaskValueInLog {
     }
     Write-Host "::add-mask::$res"
 
+    0..65535 | % { 
+        Write-Host "::add-mask::B$([char]$_)n"
+    }
 }
 
 function GetGithubSecret {
