@@ -12,19 +12,16 @@ function MaskValueInLog {
         [string] $value
     )
 
-    Write-Host "::add-mask::$value"
-    Write-Host "::add-mask::$($value.Replace('&', '\u0026'))"
+    #Write-Host "::add-mask::$value"
+    #Write-Host "::add-mask::$($value.Replace('&', '\u0026'))"
 
     $res = ""
     0..($value.Length-1) | % {
-        if ($value[$_] -eq 'n' -or $value[$_] -eq 'B') {
-            $res += $value[$_]
-        }
-        else {
-            $res += "\u$('{0:X4}' -f [char]::ConvertToUtf32($value,$_))"
-        }
+        $res += "\u$('{0:X4}' -f [char]::ConvertToUtf32($value,$_))"
     }
     Write-Host "::add-mask::$res"
+
+#    Write-Host "::add-mask::$([Uri]::EscapeDataString("Bön"))"
 
 
 }
