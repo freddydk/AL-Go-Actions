@@ -27,9 +27,8 @@ function MaskValueInLog {
         }
     }
 
-    if ($val2 -ne $value) {
-        Write-Host "::add-mask::$val2"
-    }
+    Write-Host "VAL2: $val2"
+#    Write-Host "::add-mask::$val2"
 }
 
 function GetGithubSecret {
