@@ -12,6 +12,9 @@ function MaskValueInLog {
         [string] $value
     )
 
+    Write-Host "MaskValueInLog:"
+    $value.ToCharArray() | % { Write-Host "[int]$_ $_" }
+
     Write-Host "::add-mask::$value"
     Write-Host "::add-mask::$($value.Replace('&', '\u0026'))"
 }
