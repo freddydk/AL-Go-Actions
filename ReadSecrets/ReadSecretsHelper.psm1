@@ -24,7 +24,8 @@ function MaskValueInLog {
         }
         else {
             Write-Host $chint
-            Write-Host [int]$script:escchars[$chint-32]
+            $ch = $script:escchars[$chint-32]
+            Write-Host "$([int]$ch)"
             $val2 += $script:escchars[$chint-32]
         }
     }
