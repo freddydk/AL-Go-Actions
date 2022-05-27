@@ -12,11 +12,16 @@ function MaskValueInLog {
         [string] $value
     )
 
-    Write-Host "MaskValueInLog:"
-    $value.ToCharArray() | % { Write-Host "[int]$_ $_" }
-
     Write-Host "::add-mask::$value"
     Write-Host "::add-mask::$($value.Replace('&', '\u0026'))"
+
+    $res = ""
+    0..($value.Length-1) | % {
+        $res += "\u$('{0:X4}' -f [char]::ConvertToUtf32($value,$_))"
+    }
+    Write-Host "::add-mask::$res"
+
+
 }
 
 function GetGithubSecret {
