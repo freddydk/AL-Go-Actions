@@ -14,8 +14,6 @@ function MaskValueInLog {
         [string] $value
     )
 
-    $value = $value.Trim()
-    
     Write-Host "::add-mask::$value"
 
     $val2 = ""
@@ -30,7 +28,7 @@ function MaskValueInLog {
     }
 
     Write-Host "VAL2: $val2"
-#    Write-Host "::add-mask::$val2"
+    Write-Host "::add-mask::$val2"
 }
 
 function GetGithubSecret {
