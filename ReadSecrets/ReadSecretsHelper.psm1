@@ -1,4 +1,4 @@
-﻿$script:gitHubSecrets = $env:Secrets | ConvertFrom-Json
+$script:gitHubSecrets = $env:Secrets | ConvertFrom-Json
 $script:keyvaultConnectionExists = $false
 $script:azureRm210 = $false
 $script:isKeyvaultSet = $script:gitHubSecrets.PSObject.Properties.Name -eq "AZURE_CREDENTIALS"
@@ -16,14 +16,16 @@ function MaskValueInLog {
     Write-Host "::add-mask::$($value.Replace('&', '\u0026'))"
 
     $res = ""
-    0..($value.Length-1) | % {
-        $res += "\u$('{0:X4}' -f [char]::ConvertToUtf32($value,$_))"
+    0..($value.Length-1) | ForEach-Object {
+        $chvalue = [int]$value[$_]
+        if ($chvalue -ge 128) {
+            $res += [char]65533
+        }
+        else {
+            $res += $value[$_]
+        }
     }
     Write-Host "::add-mask::$res"
-
-    65530..65535 | % { 
-        Write-Host "::add-mask::B$([char]$_)n"
-    }
 }
 
 function GetGithubSecret {
