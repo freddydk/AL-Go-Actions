@@ -17,7 +17,12 @@ function MaskValueInLog {
 
     $res = ""
     0..($value.Length-1) | % {
-        $res += "\u$('{0:X4}' -f [char]::ConvertToUtf32($value,$_))"
+        if ($value[$_] -eq 'n' -or $value[$_] -eq 'B') {
+            $res += $value[$_]
+        }
+        else {
+            $res += "\u$('{0:X4}' -f [char]::ConvertToUtf32($value,$_))"
+        }
     }
     Write-Host "::add-mask::$res"
 
