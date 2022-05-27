@@ -14,6 +14,8 @@ function MaskValueInLog {
         [string] $value
     )
 
+    $value = $value.Trim()
+    
     Write-Host "::add-mask::$value"
 
     $val2 = ""
