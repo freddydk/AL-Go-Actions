@@ -13,13 +13,13 @@ function MaskValueInLog {
     )
 
     Write-Host "::add-mask::$value"
-    Write-Host "::add-mask::$($value.Replace('&', '\u0026'))"
+    Write-Host "::add-mask::$($value.Replace('&', '\u0026').Replace('''', '\u0027').Replace('<', '\u003c').Replace('>', '\u003e'))"
 
     $res = ""
     0..($value.Length-1) | ForEach-Object {
         $chvalue = [int]$value[$_]
         if ($chvalue -ge 128) {
-            $res += [char]65533
+            $res += '?'  # [char]65533
         }
         else {
             $res += $value[$_]
