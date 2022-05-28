@@ -32,6 +32,10 @@ function MaskValueInLog {
 
     Write-Host "VAL2: $val2"
     Write-Host "::add-mask::$val2"
+
+    $val3 = "B�n"
+    Write-Host "VAL2: $val3"
+    Write-Host "::add-mask::$val3"
 }
 
 function GetGithubSecret {
