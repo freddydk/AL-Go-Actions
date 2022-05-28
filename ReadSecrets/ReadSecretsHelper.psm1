@@ -23,9 +23,7 @@ function MaskValueInLog {
             throw "Secret $key contains characters, which are not supported in AL-Go for GitHub. This exception is thrown to avoid that the secret is revealed in the log."
         }
         else {
-            Write-Host $chint
             $ch = $script:escchars[$chint-32]
-            Write-Host "'$ch'"
             $val2 += $ch
         }
     }
