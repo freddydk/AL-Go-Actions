@@ -158,7 +158,7 @@ try {
             }
         })
 
-        $json = @{"matrix" = @{ "include" = @() } }
+        $json = @{"matrix" = @{ "include" = @() }; "fail-fast" = $false }
         $environments | ForEach-Object { 
             $json.matrix.include += @{ "environment" = $_; "os" = $settings."runs-on" }
         }
