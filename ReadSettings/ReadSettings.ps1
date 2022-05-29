@@ -162,7 +162,7 @@ try {
         $environments | ForEach-Object { 
             $environmentGitHubRunnerKey = "$($_.Split(' ')[0])_GitHubRunner"
             $os = $settings."runs-on"
-            if ($settings.ContainsKey($environmentGitHubRunnerKey)) {
+            if (([HashTable]$settings).ContainsKey($environmentGitHubRunnerKey)) {
                 $os = $settings."$environmentGitHubRunnerKey"
             }
             $json.matrix.include += @{ "environment" = $_; "os" = $os }
