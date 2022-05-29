@@ -160,7 +160,12 @@ try {
 
         $json = @{"matrix" = @{ "include" = @() }; "fail-fast" = $false }
         $environments | ForEach-Object { 
-            $json.matrix.include += @{ "environment" = $_; "os" = $settings."runs-on" }
+            $environmentGitHubRunnerKey = "$($_.Split(' ')[0])_GitHubRunner"
+            $os = $settings."runs-on"
+            if ($settings.ContainsKey($environmentGitHubRunnerKey)) {
+                $os = $settings."$environmentGitHubRunnerKey"
+            }
+            $json.matrix.include += @{ "environment" = $_; "os" = $os }
         }
         $environmentsJson = $json | ConvertTo-Json -Depth 99 -compress
         Write-Host "::set-output name=EnvironmentsJson::$environmentsJson"
