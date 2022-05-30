@@ -119,7 +119,7 @@ function ConnectAzureKeyVaultIfNeeded {
             Clear-AzContext -Scope Process
             Clear-AzContext -Scope CurrentUser -Force -ErrorAction SilentlyContinue
             Connect-AzAccount -ServicePrincipal -Tenant $tenantId -Credential $credential | Out-Null
-            Set-AzContext -SubscriptionId $subscriptionId | Out-Null
+            Set-AzContext -SubscriptionId $subscriptionId -Tenant $tenantId | Out-Null
         }
         $script:keyvaultConnectionExists = $true
         Write-Host "Successfully connected to Azure Key Vault."
