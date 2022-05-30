@@ -417,7 +417,7 @@ function ReadSettings {
         "templateBranch"                         = ""
         "appDependencyProbingPaths"              = @()
         "runs-on"                                = "windows-latest"
-        "githubRunner"                           = "windows-latest"
+        "githubRunner"                           = ""
         "cacheImageName"                         = "my"
         "cacheKeepDays"                          = 3
         "alwaysBuildAllProjects"                 = $false
@@ -462,6 +462,9 @@ function ReadSettings {
         }
     }
 
+    if ($settings.githubRunner -eq "") {
+        $settings.githubRunner = $settings."runs-on"
+    }
     $settings
 }
 
