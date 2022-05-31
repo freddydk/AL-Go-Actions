@@ -306,7 +306,9 @@ function DownloadArtifact {
    
     Write-Host "Downloading artifact $($artifact.Name)"
     if (![string]::IsNullOrEmpty($token)) {
+        Write-Host "get token"
         $authstatus = invoke-gh auth status --show-token
+        $authstatus | Out-Host
         $token = $authStatus.SubString($authstatus.IndexOf('Token: ')+7).Trim()
         Write-Host $token
     }
