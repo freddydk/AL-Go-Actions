@@ -119,9 +119,9 @@ try {
                     $projects = @($projects | Where-Object {
                         $project = $_.Replace('\','/')
                         $filesChanged | Where-Object { $_ -like "$project/*" }
-                    }
+                    })
                     Write-Host "Modified projects: $($projects -join ', ')"
-                })
+                }
             }
         }
         if (Test-Path ".AL-Go" -PathType Container) {
