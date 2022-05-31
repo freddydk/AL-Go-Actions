@@ -258,8 +258,12 @@ function DownloadRelease {
     if ($projects -eq "") { $projects = "*" }
     Write-Host "Downloading release $($release.Name)"
     $headers = @{ 
-        "Authorization" = "token $token"
         "Accept"        = "application/octet-stream"
+    }
+    if (![string]::IsNullOrEmpty($token)) {
+        $headers += @{ 
+            "Authorization" = "token $token"
+        }
     }
     $projects.Split(',') | ForEach-Object {
         $project = $_
@@ -296,8 +300,12 @@ function DownloadArtifact {
 
     Write-Host "Downloading artifact $($artifact.Name)"
     $headers = @{ 
-        "Authorization" = "token $token"
-        "Accept"        = "application/vnd.github.v3+json"
+        "Accept" = "application/vnd.github.v3+json"
+    }
+    if (![string]::IsNullOrEmpty($token)) {
+        $headers += @{ 
+            "Authorization" = "token $token"
+        }    
     }
     $outFile = Join-Path $path "$($artifact.Name).zip"
     Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $artifact.archive_download_url -OutFile $outFile
