@@ -262,7 +262,7 @@ function DownloadRelease {
         "Authorization" = "token $token"
     }
     $projects.Split(',') | ForEach-Object {
-        $project = $_
+        $project = $_.Replace('\','_')
         Write-Host "project '$project'"
         
         $release.assets | Where-Object { $_.name -like "$project$mask*.zip" } | ForEach-Object {
