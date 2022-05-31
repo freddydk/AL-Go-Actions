@@ -257,13 +257,17 @@ function DownloadRelease {
 
     if ($projects -eq "") { $projects = "*" }
     Write-Host "Downloading release $($release.Name)"
+    if (![string]::IsNullOrEmpty($token)) {
+        $authstatus = invoke-gh auth status --show-token
+        $token = $authStatus.SubString($authstatus.IndexOf('Token: ')+7).Trim()
+    }
+    $headers = @{ 
+        "Authorization" = "token $token"
+        "Accept" = "application/vnd.github.v3+json"
+    }
     $headers = @{ 
         "Accept"        = "application/octet-stream"
-    }
-    if (![string]::IsNullOrEmpty($token)) {
-        $headers += @{ 
-            "Authorization" = "token $token"
-        }
+        "Authorization" = "token $token"
     }
     $projects.Split(',') | ForEach-Object {
         $project = $_
@@ -298,14 +302,17 @@ function DownloadArtifact {
         $artifact
     )
 
+    $artifact | Out-Host
+   
     Write-Host "Downloading artifact $($artifact.Name)"
-    $headers = @{ 
-        "Accept" = "application/vnd.github.v3+json"
-    }
     if (![string]::IsNullOrEmpty($token)) {
-        $headers += @{ 
-            "Authorization" = "token $token"
-        }    
+        $authstatus = invoke-gh auth status --show-token
+        $token = $authStatus.SubString($authstatus.IndexOf('Token: ')+7).Trim()
+        Write-Host $token
+    }
+    $headers = @{ 
+        "Authorization" = "token $token"
+        "Accept"        = "application/vnd.github.v3+json"
     }
     $outFile = Join-Path $path "$($artifact.Name).zip"
     Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $artifact.archive_download_url -OutFile $outFile
