@@ -1176,6 +1176,14 @@ function CreateDevEnv {
         $installApps = $repo.installApps
         $installTestApps = $repo.installTestApps
 
+        if ($repo.appDependencyProbingPaths) {
+            Write-Host "Downloading dependencies ..."
+            $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-Apps-"
+            Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-TestApps-" | ForEach-Object {
+                $installTestApps += "($_)"
+            }
+        }
+    
         if ($repo.versioningStrategy -eq -1) {
             if ($kind -eq "cloud") { throw "Versioningstrategy -1 cannot be used on cloud" }
             $artifactVersion = [Version]$repo.artifact.Split('/')[4]
