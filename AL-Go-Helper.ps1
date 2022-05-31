@@ -1176,10 +1176,18 @@ function CreateDevEnv {
         $installApps = $repo.installApps
         $installTestApps = $repo.installTestApps
 
+        $buildArtifactFolder = Join-Path $baseFolder "output"
+        if (Test-Path $buildArtifactFolder) {
+            Get-ChildItem -Path $buildArtifactFolder -Include * -File | ForEach-Object { $_.Delete()}
+        }
+        else {
+            New-Item $buildArtifactFolder -ItemType Directory | Out-Null
+        }
+
         if ($repo.appDependencyProbingPaths) {
             Write-Host "Downloading dependencies ..."
-            $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-Apps-"
-            Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-TestApps-" | ForEach-Object {
+            $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-Apps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com'
+            Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-TestApps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' | ForEach-Object {
                 $installTestApps += "($_)"
             }
         }
@@ -1199,14 +1207,6 @@ function CreateDevEnv {
             }
         }
 
-        $buildArtifactFolder = Join-Path $baseFolder "output"
-        if (Test-Path $buildArtifactFolder) {
-            Get-ChildItem -Path $buildArtifactFolder -Include * -File | ForEach-Object { $_.Delete()}
-        }
-        else {
-            New-Item $buildArtifactFolder -ItemType Directory | Out-Null
-        }
-    
         $allTestResults = "testresults*.xml"
         $testResultsFile = Join-Path $baseFolder "TestResults.xml"
         $testResultsFiles = Join-Path $baseFolder $allTestResults
