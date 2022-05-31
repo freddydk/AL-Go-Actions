@@ -1186,6 +1186,7 @@ function CreateDevEnv {
 
         if ($repo.appDependencyProbingPaths) {
             Write-Host "Downloading dependencies ..."
+            $repo.appDependencyProbingPaths.GetType() | Out-Host
             $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-Apps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com'
             Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-TestApps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' | ForEach-Object {
                 $installTestApps += "($_)"

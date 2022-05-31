@@ -17,6 +17,7 @@ function Get-dependencies {
         $dependency = $_
 
         $dependency | Out-Host
+        $dependency.GetType() | Out-Host
 
         if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
             throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
