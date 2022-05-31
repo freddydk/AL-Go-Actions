@@ -116,12 +116,12 @@ try {
                 if ($filesChanged.Count -lt 250) {
                     Write-Host "Modified files:"
                     $filesChanged | Out-Host
-                    $projects = $projects | Where-Object {
+                    $projects = @($projects | Where-Object {
                         $project = $_.Replace('\','/')
                         $filesChanged | Where-Object { $_ -like "$project/*" }
                     }
                     Write-Host "Modified projects: $($projects -join ', ')"
-                }
+                })
             }
         }
         if (Test-Path ".AL-Go" -PathType Container) {
