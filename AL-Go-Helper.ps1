@@ -51,30 +51,6 @@ $testRunnerApps = @($permissionsMockAppId, $testRunnerAppId) + $performanceToolk
 
 $MicrosoftTelemetryConnectionString = "InstrumentationKey=84bd9223-67d4-4378-8590-9e4a46023be2;IngestionEndpoint=https://westeurope-1.in.applicationinsights.azure.com/"
 
-function invoke-git {
-    Param(
-        [parameter(mandatory = $true, position = 0)][string] $command,
-        [parameter(mandatory = $false, position = 1, ValueFromRemainingArguments = $true)] $remaining
-    )
-
-    Write-Host -ForegroundColor Yellow "git $command $remaining"
-    git $command $remaining
-    if ($lastexitcode) { throw "git $command error" }
-}
-
-function invoke-gh {
-    Param(
-        [parameter(mandatory = $true, position = 0)][string] $command,
-        [parameter(mandatory = $false, position = 1, ValueFromRemainingArguments = $true)] $remaining
-    )
-
-    Write-Host -ForegroundColor Yellow "gh $command $remaining"
-    $ErrorActionPreference = "SilentlyContinue"
-    gh $command $remaining
-    $ErrorActionPreference = "Stop"
-    if ($lastexitcode) { throw "gh $command error" }
-}
-
 function ConvertTo-HashTable {
     [CmdletBinding()]
     Param(
@@ -210,6 +186,9 @@ function DownloadAndImportBcContainerHelper {
         $repoSettingsPath = Join-Path $baseFolder $repoSettingsFile
         if (-not (Test-Path $repoSettingsPath)) {
             $repoSettingsPath = Join-Path $baseFolder "..\$repoSettingsFile"
+            if (-not (Test-Path $repoSettingsPath)) {
+                $repoSettingsPath = Join-Path $baseFolder "..\..\$repoSettingsFile"
+            }
         }
         if (Test-Path $repoSettingsPath) {
             if (-not $BcContainerHelperVersion) {
@@ -1187,12 +1166,8 @@ function CreateDevEnv {
         if ($repo.appDependencyProbingPaths) {
             Write-Host "Downloading dependencies ..."
 
-            $repo.appDependencyProbingPaths.GetType() | Out-Host
-            $repo.appDependencyProbingPaths = $repo.appDependencyProbingPaths | ForEach-Object { New-Object PSObject -Property $_ }
-            $repo.appDependencyProbingPaths.GetType() | Out-Host
-
-            $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-Apps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com'
-            Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-TestApps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' | ForEach-Object {
+            $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-Apps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' -token ""
+            Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "-TestApps-" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' -token "" | ForEach-Object {
                 $installTestApps += "($_)"
             }
         }
