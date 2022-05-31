@@ -113,15 +113,13 @@ try {
                 }
                 $response = Invoke-WebRequest -Headers $headers -UseBasicParsing -Method GET -Uri $url | ConvertFrom-Json
                 $filesChanged = @($response.files | ForEach-Object { $_.filename })
-                Write-Host "Files Changed:"
-                $filesChanged | Out-Host
                 if ($filesChanged.Count -lt 250) {
-                    $foldersChanged = @($filesChanged | ForEach-Object { $_.Split('/')[0] } | Select-Object -Unique)
-                    Write-Host "Folders Changed:"
-                    $foldersChanged | Out-Host
-                    Write-Host "Projects:"
-                    $projects | Out-Host
-                    $projects = @($projects | Where-Object { $foldersChanged -contains $_ })
+                    Write-Host "Modified files:"
+                    $filesChanged | Out-Host
+                    $projects = $projects | Where-Object {
+                        $project = $_.Replace('\','/')
+                        $filesChanged | Where-Object { $_ -like "$project/*" }
+                    }
                     Write-Host "Modified projects: $($projects -join ', ')"
                 }
             }
