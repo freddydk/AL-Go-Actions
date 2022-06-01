@@ -143,8 +143,10 @@ function CmdDo {
     }
 }
 
-function invoke-gh2 {
+function invoke-gh {
     Param(
+        [switch] $silent,
+        [switch] $returnValue,
         [parameter(mandatory = $true, position = 0)][string] $command,
         [parameter(mandatory = $false, position = 1, ValueFromRemainingArguments = $true)] $remaining
     )
@@ -158,11 +160,13 @@ function invoke-gh2 {
             $arguments += "$_ "
         }
     }
-    cmdDo -command gh -arguments $arguments -silent
+    cmdDo -command gh -arguments $arguments -silent:$silent -returnValue:$returnValue
 }
 
-function invoke-git2 {
+function invoke-git {
     Param(
+        [switch] $silent,
+        [switch] $returnValue,
         [parameter(mandatory = $true, position = 0)][string] $command,
         [parameter(mandatory = $false, position = 1, ValueFromRemainingArguments = $true)] $remaining
     )
@@ -176,7 +180,7 @@ function invoke-git2 {
             $arguments += "$_ "
         }
     }
-    cmdDo -command git -arguments $arguments -silent
+    cmdDo -command git -arguments $arguments -silent:$silent -returnValue:$returnValue
 }
 
 function SemVerObjToSemVerStr {
