@@ -31,7 +31,10 @@ function Get-dependencies {
             $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
         }
 
-        # TODO better error messages
+        $projects = $dependency.projects
+        if ([string]::IsNullOrEmpty($dependency.projects)) {
+            $projects = "*"
+        }
 
         $repository = ([uri]$dependency.repo).AbsolutePath.Replace(".git", "").TrimStart("/")
         if ($dependency.release_status -eq "latestBuild") {
@@ -76,11 +79,6 @@ function Get-dependencies {
                 throw "Could not find a release that matches the criteria."
             }
                 
-            $projects = $dependency.projects
-            if ([string]::IsNullOrEmpty($dependency.projects)) {
-                $projects = "*"
-            }
-
             $download = DownloadRelease -token $dependency.authTokenSecret -projects $projects -api_url $api_url -repository $repository -path $saveToPath -release $release -mask $mask
         }
         if ($download) {
