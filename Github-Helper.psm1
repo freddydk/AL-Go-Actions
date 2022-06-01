@@ -54,6 +54,9 @@ function Get-dependencies {
                 $artifact = $artifacts | Select-Object -First 1
                 if ($artifact) {
                     $download = DownloadArtifact -path $saveToPath -token $dependency.authTokenSecret -artifact $artifact
+                    if ($download) {
+                        $downloadedList += $download
+                    }
                 }
                 else {
                     Write-Host -ForegroundColor Red "Could not find any artifacts that matches '$project*$mask*'"
@@ -80,9 +83,9 @@ function Get-dependencies {
             }
                 
             $download = DownloadRelease -token $dependency.authTokenSecret -projects $projects -api_url $api_url -repository $repository -path $saveToPath -release $release -mask $mask
-        }
-        if ($download) {
-            $downloadedList += $download
+            if ($download) {
+                $downloadedList += $download
+            }
         }
     }
     
