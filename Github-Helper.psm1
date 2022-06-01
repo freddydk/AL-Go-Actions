@@ -93,6 +93,8 @@ function CmdDo {
         [switch] $silent
     )
 
+    Write-Host "'$command' '$arguments'"
+
     $oldNoColor = "$env:NO_COLOR"
     $env:NO_COLOR = "Y"
     $oldEncoding = [Console]::OutputEncoding
@@ -140,7 +142,7 @@ function CmdDo {
     }
 }
 
-function invoke-gh {
+function invoke-gh2 {
     Param(
         [parameter(mandatory = $true, position = 0)][string] $command,
         [parameter(mandatory = $false, position = 1, ValueFromRemainingArguments = $true)] $remaining
@@ -158,7 +160,7 @@ function invoke-gh {
     cmdDo -command gh -arguments $arguments -silent
 }
 
-function invoke-git {
+function invoke-git2 {
     Param(
         [parameter(mandatory = $true, position = 0)][string] $command,
         [parameter(mandatory = $false, position = 1, ValueFromRemainingArguments = $true)] $remaining

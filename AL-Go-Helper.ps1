@@ -798,18 +798,18 @@ function CloneIntoNewFolder {
     $env:GITHUB_TOKEN = $token
 
     # Configure git username and email
-    invoke-git config --global user.email "$actor@users.noreply.github.com"
-    invoke-git config --global user.name "$actor"
+    invoke-git2 config --global user.email "$actor@users.noreply.github.com"
+    invoke-git2 config --global user.name "$actor"
 
     # Configure hub to use https
-    invoke-git config --global hub.protocol https
+    invoke-git2 config --global hub.protocol https
 
-    invoke-git clone $serverUrl
+    invoke-git2 clone $serverUrl
 
     Set-Location *
 
     if ($branch) {
-        invoke-git checkout -b $branch
+        invoke-git2 checkout -b $branch
     }
 
     $serverUrl
@@ -822,22 +822,22 @@ function CommitFromNewFolder {
         [string] $branch
     )
 
-    invoke-git add *
+    invoke-git2 add *
     if ($commitMessage.Length -gt 250) {
         $commitMessage = "$($commitMessage.Substring(0,250))...)"
     }
-    invoke-git commit --allow-empty -m "'$commitMessage'"
+    invoke-git2 commit --allow-empty -m "'$commitMessage'"
 
     Write-Host $serverUrl
     Write-Host $branch
         
 
     if ($branch) {
-        invoke-git push -u $serverUrl $branch
-        invoke-gh pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY
+        invoke-git2 push -u $serverUrl $branch
+        invoke-gh2 pr create --fill --head $branch --repo $env:GITHUB_REPOSITORY
     }
     else {
-        invoke-git push $serverUrl
+        invoke-git2 push $serverUrl
     }
 }
 
