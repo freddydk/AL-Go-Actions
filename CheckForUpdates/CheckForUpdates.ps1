@@ -260,7 +260,6 @@ try {
                         Write-Host "Update $($_.DstFile)"
                         Set-Content -Path $_.DstFile -Encoding UTF8 -Value $_.Content
                     }
-#                    $releaseNotes = $releaseNotes.Replace('"','""')
                 }
                 catch {}
                 if ($releaseNotes -eq "") {
