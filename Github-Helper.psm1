@@ -390,7 +390,9 @@ function GetArtifacts {
     $page = 1
     Write-Host "Analyzing artifacts"
     do {
-        $artifacts = Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/actions/artifacts?page=$page" | ConvertFrom-Json
+        $webresult = = Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/actions/artifacts?page=$page"
+        Write-Host $webresult
+        $artifacts $webresult | ConvertFrom-Json
         $page++
         $result += @($artifacts.artifacts | Where-Object { $_.name -like $mask })
     } while ($artifacts.artifacts)
