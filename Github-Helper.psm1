@@ -390,13 +390,11 @@ function GetArtifacts {
     $page = 1
     Write-Host "Analyzing artifacts"
     do {
-        Write-Host "$api_url/repos/$repository/actions/artifacts?page=$page"
-        $webresult = Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/actions/artifacts?page=$page"
-        Write-Host $webresult
-        $artifacts = $webresult | ConvertFrom-Json
+        Write-Host "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page"
+        $artifacts = Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page" | ConvertFrom-Json
         $page++
         $result += @($artifacts.artifacts | Where-Object { $_.name -like $mask })
-    } while ($artifacts.artifacts)
+    } while ($artifacts.total_count -gt $page*100)
     $result
 }
 
