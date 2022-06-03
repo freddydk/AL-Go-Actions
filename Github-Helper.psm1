@@ -318,8 +318,8 @@ function GetReleaseNotes {
 
     $postParams = @{
         tag_name = $tag_name;
-    } 
-    
+    }
+
     if (-not [string]::IsNullOrEmpty($previous_tag_name)) {
         $postParams["previous_tag_name"] = $previous_tag_name
     }
@@ -396,6 +396,39 @@ function CheckRateLimit {
     }
 }
 
+function InvokeWebRequest {
+    Param(
+        [Hashtable] $headers,
+        [string] $uri
+    )
+
+    try {
+        Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $uri
+    }
+    catch {
+        Write-Host $_.Exception.Message
+        try {
+            $webException = [System.Net.WebException]$exception
+            Write-Host "is webexception"
+            $webResponse = $webException.Response
+            Write-Host "has response"
+            $reqstream = $webResponse.GetResponseStream()
+            Write-Host "got rs"
+            $sr = new-object System.IO.StreamReader $reqstream
+            $result = $sr.ReadToEnd()
+            try {
+                $json = $result | ConvertFrom-Json
+                Write-Host $json.Message
+            }
+            catch {
+                Write-Host $result
+            }
+        }
+        catch {}
+        throw $_.Exception
+    }
+}
+
 function GetArtifacts {
     Param(
         [string] $token,
@@ -412,7 +445,7 @@ function GetArtifacts {
     $headers | Out-Host
     do {
         Write-Host "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page"
-        $artifacts = Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page" | ConvertFrom-Json
+        $artifacts = InvokeWebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page" | ConvertFrom-Json
         $page++
         $result += @($artifacts.artifacts | Where-Object { $_.name -like $mask })
     } while ($artifacts.total_count -gt $page*100)
