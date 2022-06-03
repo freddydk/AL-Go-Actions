@@ -383,7 +383,9 @@ function CheckRateLimit {
     )
 
     $headers = GetHeader -token $token
-    $rate = ((Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "https://api.github.com/rate_limit").Content | ConvertFrom-Json).rate
+    $rate = (Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "https://api.github.com/rate_limit").Content | ConvertFrom-Json
+    $rate | ConvertTo-Json -Depth 99 | Out-Host
+    $rate = $rate.rate
     $percent = [int]($rate.remaining*100/$rate.limit)
     Write-Host "$($rate.remaining) API calls remaining out of $($rate.limit) ($percent%)"
     if ($percent -lt 10) {
