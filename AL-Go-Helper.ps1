@@ -572,7 +572,7 @@ function AnalyzeRepo {
                 $enumerate = $false
             }
             if ($enumerate) {
-                $expandFolders = @(Get-Item $appJsonFile -ErrorAction SilentlyContinue | ForEach-Object { Resolve-Path -Relative $_.Directory }
+                $expandFolders = @(Get-Item $appJsonFile -ErrorAction SilentlyContinue | ForEach-Object { Resolve-Path -Relative $_.Directory })
                 if ($appFolder) {
                     $settings.appFolders = @($settings.appFolders | Where-Object { $_ -ne $folderName }) + $expandFolders
                 }
