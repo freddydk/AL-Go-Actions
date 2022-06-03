@@ -406,9 +406,16 @@ function InvokeWebRequest {
         Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $uri
     }
     catch {
-        Write-Host $_.Exception.Message
+        $exception = $_.Exception
+        $message = $exception.Message
+        Write-Host $message
         try {
-            $exception = $_.Exception
+            $errorDetails = $_.ErrorDetails | ConvertFrom-Json
+            $message += " $($errorDetails.error)`r`n$($errorDetails.error_description)"
+        }
+        Write-Host $message
+        catch {}
+        try {
             $webException = [System.Net.WebException]$exception
             Write-Host "is webexception"
             $webResponse = $webException.Response
@@ -428,7 +435,7 @@ function InvokeWebRequest {
             }
         }
         catch {}
-        throw $_.Exception
+        throw $message
     }
 }
 
