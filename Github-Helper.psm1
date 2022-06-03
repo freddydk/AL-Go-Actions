@@ -28,8 +28,7 @@ function InvokeWebRequest {
         $message = $exception.Message
         Write-Host $message
         try {
-            $errorDetails = $_.ErrorDetails | ConvertFrom-Json
-            $message += " $($errorDetails.error)`r`n$($errorDetails.error_description)"
+            $message += " $($_.Exception.Response.StatusDescription)"
             Write-Host $message
         }
         catch {}
