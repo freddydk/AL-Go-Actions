@@ -408,6 +408,7 @@ function InvokeWebRequest {
     catch {
         Write-Host $_.Exception.Message
         try {
+            $exception = $_.Exception
             $webException = [System.Net.WebException]$exception
             Write-Host "is webexception"
             $webResponse = $webException.Response
