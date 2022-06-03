@@ -377,6 +377,23 @@ function DownloadRelease {
     }
 }       
 
+function CheckRateLimit {
+    Param(
+        [string] $token
+    )
+
+    $headers = GetHeader -token $token
+    $rate = ((Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "https://api.github.com/rate_limit").Content | ConvertFrom-Json).rate
+    $percent = [int]($rate.remaining*100/$rate.limit)
+    Write-Host "$($rate.remaining) API calls remaining out of $($rate.limit) ($percent%)"
+    if ($percent -lt 10) {
+        $resetTimeStamp = ([datetime] '1970-01-01Z').AddSeconds($rate.reset)
+        $waitTime = $resetTimeStamp.Subtract([datetime]::Now)
+        Write-Host "Less than 10% API calls left, waiting for $($waitTime.TotalSeconds) seconds for limits to reset."
+        Start-Sleep -seconds $waitTime.TotalSeconds+1
+    }
+}
+
 function GetArtifacts {
     Param(
         [string] $token,
@@ -389,6 +406,7 @@ function GetArtifacts {
     $result = @()
     $page = 1
     Write-Host "Analyzing artifacts"
+    CheckRateLimit
     $headers | Out-Host
     do {
         Write-Host "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page"
