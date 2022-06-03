@@ -416,7 +416,9 @@ function InvokeWebRequest {
             $reqstream = $webResponse.GetResponseStream()
             Write-Host "got rs"
             $sr = new-object System.IO.StreamReader $reqstream
+            Write-Host "got sr"
             $result = $sr.ReadToEnd()
+            Write-Host "'$result'"
             try {
                 $json = $result | ConvertFrom-Json
                 Write-Host $json.Message
