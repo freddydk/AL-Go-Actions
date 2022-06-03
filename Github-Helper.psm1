@@ -1,3 +1,62 @@
+function InvokeWebRequest {
+    Param(
+        [Hashtable] $headers,
+        [string] $method,
+        [string] $body,
+        [string] $outFile,
+        [string] $uri
+    )
+
+    try {
+        $params = @{ "UseBasicParsing" = $true }
+        if ($headers) {
+            $params += @{ "headers" = $headers }
+        }
+        if ($method) {
+            $params += @{ "method" = $method }
+        }
+        if ($body) {
+            $params += @{ "body" = $body }
+        }
+        if ($outfile) {
+            $params += @{ "outfile" = $outfile }
+        }
+        Invoke-WebRequest  @params -Uri $uri
+    }
+    catch {
+        $exception = $_.Exception
+        $message = $exception.Message
+        Write-Host $message
+        try {
+            $errorDetails = $_.ErrorDetails | ConvertFrom-Json
+            $message += " $($errorDetails.error)`r`n$($errorDetails.error_description)"
+        }
+        Write-Host $message
+        catch {}
+        try {
+            $webException = [System.Net.WebException]$exception
+            Write-Host "is webexception"
+            $webResponse = $webException.Response
+            Write-Host "has response"
+            $reqstream = $webResponse.GetResponseStream()
+            Write-Host "got rs"
+            $sr = new-object System.IO.StreamReader $reqstream
+            Write-Host "got sr"
+            $result = $sr.ReadToEnd()
+            Write-Host "'$result'"
+            try {
+                $json = $result | ConvertFrom-Json
+                Write-Host $json.Message
+            }
+            catch {
+                Write-Host $result
+            }
+        }
+        catch {}
+        throw $message
+    }
+}
+
 function Get-dependencies {
     Param(
         $probingPathsJson,
@@ -268,7 +327,7 @@ function GetReleases {
     )
 
     Write-Host "Analyzing releases $api_url/repos/$repository/releases"
-    $releases = @(Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/releases" | ConvertFrom-Json)
+    $releases = @(InvokeWebRequest -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/releases" | ConvertFrom-Json)
     if ($releases.Count -gt 1) {
         # Sort by SemVer tag
         try {
@@ -324,7 +383,7 @@ function GetReleaseNotes {
         $postParams["previous_tag_name"] = $previous_tag_name
     }
 
-    Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Method POST -Body ($postParams | ConvertTo-Json) -Uri "$api_url/repos/$repository/releases/generate-notes" 
+    InvokeWebRequest -Headers (GetHeader -token $token) -Method POST -Body ($postParams | ConvertTo-Json) -Uri "$api_url/repos/$repository/releases/generate-notes" 
 }
 
 function GetLatestRelease {
@@ -336,7 +395,7 @@ function GetLatestRelease {
     
     Write-Host "Getting the latest release from $api_url/repos/$repository/releases/latest"
     try {
-        Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/releases/latest" | ConvertFrom-Json
+        InvokeWebRequest -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/releases/latest" | ConvertFrom-Json
     }
     catch {
         return $null
@@ -371,7 +430,7 @@ function DownloadRelease {
         $release.assets | Where-Object { $_.name -like "$project*$mask*.zip" } | ForEach-Object {
             Write-Host "$api_url/repos/$repository/releases/assets/$($_.id)"
             $filename = Join-Path $path $_.name
-            Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/releases/assets/$($_.id)" -OutFile $filename 
+            InvokeWebRequest -Headers $headers -Uri "$api_url/repos/$repository/releases/assets/$($_.id)" -OutFile $filename 
             return $filename
         }
     }
@@ -383,7 +442,7 @@ function CheckRateLimit {
     )
 
     $headers = GetHeader -token $token
-    $rate = (Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "https://api.github.com/rate_limit").Content | ConvertFrom-Json
+    $rate = (InvokeWebRequest -Headers $headers -Uri "https://api.github.com/rate_limit").Content | ConvertFrom-Json
     $rate | ConvertTo-Json -Depth 99 | Out-Host
     $rate = $rate.rate
     $percent = [int]($rate.remaining*100/$rate.limit)
@@ -396,48 +455,6 @@ function CheckRateLimit {
     }
 }
 
-function InvokeWebRequest {
-    Param(
-        [Hashtable] $headers,
-        [string] $uri
-    )
-
-    try {
-        Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $uri
-    }
-    catch {
-        $exception = $_.Exception
-        $message = $exception.Message
-        Write-Host $message
-        try {
-            $errorDetails = $_.ErrorDetails | ConvertFrom-Json
-            $message += " $($errorDetails.error)`r`n$($errorDetails.error_description)"
-        }
-        Write-Host $message
-        catch {}
-        try {
-            $webException = [System.Net.WebException]$exception
-            Write-Host "is webexception"
-            $webResponse = $webException.Response
-            Write-Host "has response"
-            $reqstream = $webResponse.GetResponseStream()
-            Write-Host "got rs"
-            $sr = new-object System.IO.StreamReader $reqstream
-            Write-Host "got sr"
-            $result = $sr.ReadToEnd()
-            Write-Host "'$result'"
-            try {
-                $json = $result | ConvertFrom-Json
-                Write-Host $json.Message
-            }
-            catch {
-                Write-Host $result
-            }
-        }
-        catch {}
-        throw $message
-    }
-}
 
 function GetArtifacts {
     Param(
@@ -480,6 +497,6 @@ function DownloadArtifact {
         "Accept"        = "application/vnd.github.v3+json"
     }
     $outFile = Join-Path $path "$($artifact.Name).zip"
-    Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri $artifact.archive_download_url -OutFile $outFile
+    InvokeWebRequest -Headers $headers -Uri $artifact.archive_download_url -OutFile $outFile
     $outFile
 }    
