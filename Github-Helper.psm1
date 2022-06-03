@@ -295,7 +295,7 @@ function GetReleases {
 function GetHeader {
     param (
         [string] $token,
-        [string] $accept = "application/json"
+        [string] $accept = "application/vnd.github.v3+json"
     )
     $headers = @{ "Accept" = $accept }
     if (![string]::IsNullOrEmpty($token)) {
@@ -385,13 +385,14 @@ function GetArtifacts {
         [string] $mask = "*-Apps-*"
     )
 
+    $headers = GetHeader -token $token
     $result = @()
-
     $page = 1
     Write-Host "Analyzing artifacts"
+    $headers | Out-Host
     do {
         Write-Host "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page"
-        $artifacts = Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page" | ConvertFrom-Json
+        $artifacts = Invoke-WebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page" | ConvertFrom-Json
         $page++
         $result += @($artifacts.artifacts | Where-Object { $_.name -like $mask })
     } while ($artifacts.total_count -gt $page*100)
