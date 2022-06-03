@@ -391,7 +391,7 @@ function GetArtifacts {
     Write-Host "Analyzing artifacts"
     do {
         Write-Host "$api_url/repos/$repository/actions/artifacts?page=$page"
-        $webresult = = Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/actions/artifacts?page=$page"
+        $webresult = Invoke-WebRequest -UseBasicParsing -Headers (GetHeader -token $token) -Uri "$api_url/repos/$repository/actions/artifacts?page=$page"
         Write-Host $webresult
         $artifacts = $webresult | ConvertFrom-Json
         $page++
