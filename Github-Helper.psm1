@@ -30,8 +30,8 @@ function InvokeWebRequest {
         try {
             $errorDetails = $_.ErrorDetails | ConvertFrom-Json
             $message += " $($errorDetails.error)`r`n$($errorDetails.error_description)"
+            Write-Host $message
         }
-        Write-Host $message
         catch {}
         try {
             $webException = [System.Net.WebException]$exception
