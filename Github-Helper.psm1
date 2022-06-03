@@ -439,16 +439,17 @@ function GetArtifacts {
 
     $headers = GetHeader -token $token
     $result = @()
+    $per_page = 10
     $page = 1
     Write-Host "Analyzing artifacts"
     CheckRateLimit
     $headers | Out-Host
     do {
-        Write-Host "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page"
-        $artifacts = InvokeWebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/actions/artifacts?per_page=100&page=$page" | ConvertFrom-Json
+        Write-Host "$api_url/repos/$repository/actions/artifacts?per_page=$($per_page)&page=$($page)"
+        $artifacts = InvokeWebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/actions/artifacts?per_page=$($per_page)&page=$($page)" | ConvertFrom-Json
         $page++
         $result += @($artifacts.artifacts | Where-Object { $_.name -like $mask })
-    } while ($artifacts.total_count -gt $page*100)
+    } while ($artifacts.total_count -gt $page*$per_page)
     $result
 }
 
