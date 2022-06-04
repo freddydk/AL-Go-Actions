@@ -85,12 +85,12 @@ function Get-dependencies {
             $artifacts = GetArtifacts -token $dependency.authTokenSecret -api_url $api_url -repository $repository -mask $mask -projects $projects -version $dependency.version -branch $dependency.branch
             if ($artifacts) {
                 $artifacts | ForEach-Object {
-                    $download = DownloadArtifact -path $saveToPath -token $dependency.authTokenSecret -artifact $artifact
+                    $download = DownloadArtifact -path $saveToPath -token $dependency.authTokenSecret -artifact $_
                     if ($download) {
                         $downloadedList += $download
                     }
                     else {
-                        
+
                     }
                 }
             }
