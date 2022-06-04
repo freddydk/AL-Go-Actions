@@ -28,9 +28,11 @@ function InvokeWebRequest {
         $exception = $_.Exception
         $message = $exception.Message
         try {
-            $errorDetails = $errorRecord.ErrorDetails | ConvertFrom-Json
-            $errorDetails.psObject.Properties.name | ForEach-Object {
-                $message += " $($errorDetails."$_")"
+            if ($errorRecord.ErrorDetails) {
+                $errorDetails = $errorRecord.ErrorDetails | ConvertFrom-Json 
+                $errorDetails.psObject.Properties.name | ForEach-Object {
+                    $message += " $($errorDetails."$_")"
+                }
             }
         }
         catch {}
@@ -60,6 +62,7 @@ function Get-dependencies {
             throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
         }
         if (-not ($dependency.PsObject.Properties.name -eq "AuthTokenSecret")) {
+            Write-Host "Use token as AuthTokenSecret"
             $dependency | Add-Member -name "AuthTokenSecret" -MemberType NoteProperty -Value $token
         }
         if (-not ($dependency.PsObject.Properties.name -eq "Version")) {
@@ -90,7 +93,7 @@ function Get-dependencies {
                         $downloadedList += $download
                     }
                     else {
-
+                        Write-Host -ForegroundColor Red "Unable to download artifact $_"
                     }
                 }
             }
