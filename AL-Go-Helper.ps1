@@ -73,7 +73,7 @@ function OutputError {
         throw $message
     }
     else {
-        Write-Host "::Error::$message"
+        Write-Host "::Error::$($message.Replace("`r",'').Replace("`n",' '))"
         $host.SetShouldExit(1)
     }
 }
