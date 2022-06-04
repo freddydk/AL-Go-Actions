@@ -30,7 +30,7 @@ function InvokeWebRequest {
         try {
             $errorDetails = $errorRecord.ErrorDetails | ConvertFrom-Json
             $errorDetails.psObject.Properties.name | ForEach-Object {
-                $message += "`r`n$($errorDetails."$_")"
+                $message += "`r`n$($_): $($errorDetails."$_")"
             }
         }
         catch {}
