@@ -52,7 +52,7 @@ function Get-dependencies {
         New-Item $saveToPath -ItemType Directory | Out-Null
     }
 
-    Write-Host "Getting all the artifacts from probing paths"
+    Write-Host "Downloading all $mask artifacts from probing paths"
     $downloadedList = @()
     $probingPathsJson | ForEach-Object {
         $dependency = $_
@@ -99,7 +99,6 @@ function Get-dependencies {
             }
         }
         else {
-            Write-Host "Getting releases from $($dependency.repo)"
             $releases = GetReleases -api_url $api_url -token $dependency.authTokenSecret -repository $repository
             if ($dependency.version -ne "latest") {
                 $releases = $releases | Where-Object { ($_.tag_name -eq $dependency.version) }
@@ -389,7 +388,7 @@ function DownloadRelease {
     )
 
     if ($projects -eq "") { $projects = "*" }
-    Write-Host "Downloading release $($release.Name)"
+    Write-Host "Downloading release $($release.Name), projects $projects, type $mask"
     if ([string]::IsNullOrEmpty($token)) {
         $authstatus = (invoke-gh -silent -returnValue auth status --show-token) -join " "
         $token = $authStatus.SubString($authstatus.IndexOf('Token: ')+7).Trim()
@@ -403,9 +402,10 @@ function DownloadRelease {
         Write-Host "project '$project'"
         
         $release.assets | Where-Object { $_.name -like "$project*-$mask-*.zip" } | ForEach-Object {
-            Write-Host "$api_url/repos/$repository/releases/assets/$($_.id)"
+            $uri = "$api_url/repos/$repository/releases/assets/$($_.id)"
+            Write-Host $uri
             $filename = Join-Path $path $_.name
-            InvokeWebRequest -Headers $headers -Uri "$api_url/repos/$repository/releases/assets/$($_.id)" -OutFile $filename 
+            InvokeWebRequest -Headers $headers -Uri $uri -OutFile $filename 
             return $filename
         }
     }
