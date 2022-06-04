@@ -34,7 +34,8 @@ function InvokeWebRequest {
             }
         }
         catch {}
-        throw $message
+        Write-Host "::Error::$message"
+        throw
     }
 }
 
