@@ -119,8 +119,8 @@ try {
 
     if ($repo.appDependencyProbingPaths) {
         Write-Host "Downloading dependencies ..."
-        $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -token $token -mask "-Apps-"
-        Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -token $token -mask "-TestApps-" | ForEach-Object {
+        $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -token $token -mask "Apps"
+        Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -token $token -mask "TestApps" | ForEach-Object {
             $installTestApps += "($_)"
         }
     }

@@ -45,7 +45,7 @@ function Get-dependencies {
         $token,
         [string] $api_url = $ENV:GITHUB_API_URL,
         [string] $saveToPath = (Join-Path $ENV:GITHUB_WORKSPACE "dependencies"),
-        [string] $mask = "-Apps-"
+        [string] $mask = "Apps"
     )
 
     if (!(Test-Path $saveToPath)) {
@@ -71,6 +71,9 @@ function Get-dependencies {
         if (-not ($dependency.PsObject.Properties.name -eq "release_status")) {
             $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
         }
+        if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
+            $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
+        }
 
         $projects = $dependency.projects
         if ([string]::IsNullOrEmpty($dependency.projects)) {
@@ -79,29 +82,20 @@ function Get-dependencies {
 
         $repository = ([uri]$dependency.repo).AbsolutePath.Replace(".git", "").TrimStart("/")
         if ($dependency.release_status -eq "latestBuild") {
-
-            # TODO it should check the branch and limit to a certain branch
-
-            $projects.Split(',') | ForEach-Object {
-                $project = $_.Replace('\','_')
-                Write-Host "project '$project'"
-        
-                Write-Host "Getting artifacts from $($dependency.repo)"
-                $artifacts = GetArtifacts -token $dependency.authTokenSecret -api_url $api_url -repository $repository -mask "$project*$mask*"
-                if ($dependency.version -ne "latest") {
-                    $artifacts = $artifacts | Where-Object { ($_.tag_name -eq $dependency.version) }
-                }    
-
-                $artifact = $artifacts | Select-Object -First 1
-                if ($artifact) {
+            $artifacts = GetArtifacts -token $dependency.authTokenSecret -api_url $api_url -repository $repository -mask $mask -projects $projects -version $dependency.version -branch $dependency.branch
+            if ($artifacts) {
+                $artifacts | ForEach-Object {
                     $download = DownloadArtifact -path $saveToPath -token $dependency.authTokenSecret -artifact $artifact
                     if ($download) {
                         $downloadedList += $download
                     }
+                    else {
+                        
+                    }
                 }
-                else {
-                    Write-Host -ForegroundColor Red "Could not find any artifacts that matches '$project*$mask*'"
-                }
+            }
+            else {
+                Write-Host -ForegroundColor Red "Could not find any $mask artifacts for projects $projects, version $($dependency.version)"
             }
         }
         else {
@@ -391,7 +385,7 @@ function DownloadRelease {
         [string] $api_url = $ENV:GITHUB_API_URL,
         [string] $repository = $ENV:GITHUB_REPOSITORY,
         [string] $path,
-        [string] $mask = "-Apps-",
+        [string] $mask = "Apps",
         $release
     )
 
@@ -409,7 +403,7 @@ function DownloadRelease {
         $project = $_.Replace('\','_')
         Write-Host "project '$project'"
         
-        $release.assets | Where-Object { $_.name -like "$project*$mask*.zip" } | ForEach-Object {
+        $release.assets | Where-Object { $_.name -like "$project*-$mask-*.zip" } | ForEach-Object {
             Write-Host "$api_url/repos/$repository/releases/assets/$($_.id)"
             $filename = Join-Path $path $_.name
             InvokeWebRequest -Headers $headers -Uri "$api_url/repos/$repository/releases/assets/$($_.id)" -OutFile $filename 
@@ -443,19 +437,38 @@ function GetArtifacts {
         [string] $token,
         [string] $api_url = $ENV:GITHUB_API_URL,
         [string] $repository = $ENV:GITHUB_REPOSITORY,
-        [string] $mask = "*-Apps-*"
+        [string] $mask = "Apps",
+        [string] $branch = "main",
+        [string] $projects,
+        [string] $version
     )
 
     $headers = GetHeader -token $token
-    $result = @()
-    $per_page = 10
+    $allArtifacts = @()
+    $per_page = 100
     $page = 1
+    if ($version -eq 'latest') { $version = '*' }
     Write-Host "Analyzing artifacts"
     do {
-        $artifacts = InvokeWebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/actions/artifacts?per_page=$($per_page)&page=$($page)" | ConvertFrom-Json
+        $uri = "$api_url/repos/$repository/actions/artifacts?per_page=$($per_page)&page=$($page)"
+        Write-Host $uri
+        $artifacts = InvokeWebRequest -UseBasicParsing -Headers $headers -Uri $uri | ConvertFrom-Json
         $page++
-        $result += @($artifacts.artifacts | Where-Object { $_.name -like $mask })
-    } while ($artifacts.total_count -gt $page*$per_page)
+        $allArtifacts += @($artifacts.artifacts | Where-Object { $_.name -like "*-$branch-$mask-$version" })
+        $result = @()
+        $allArtifactsFound = $true
+        $projects.Split(',') | ForEach-Object {
+            $project = $_.Replace('\','_')
+            $projectArtifact = $allArtifacts | Where-Object { $_.name -like "$project-$branch-$mask-$version" } | Select-Object -First 1
+            if ($projectArtifact) {
+                $result += @($projectArtifact)
+            }
+            else {
+                $allArtifactsFound = $false
+                $result = @()
+            }
+        }
+    } while (!$allArtifactsFound -and $artifacts.total_count -gt $page*$per_page)
     $result
 }
 
