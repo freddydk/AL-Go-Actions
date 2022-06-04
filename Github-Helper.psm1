@@ -99,7 +99,6 @@ function Get-dependencies {
             }
         }
         else {
-
             Write-Host "Getting releases from $($dependency.repo)"
             $releases = GetReleases -api_url $api_url -token $dependency.authTokenSecret -repository $repository
             if ($dependency.version -ne "latest") {
@@ -480,6 +479,7 @@ function DownloadArtifact {
     )
 
     Write-Host "Downloading artifact $($artifact.Name)"
+    Write-Host $artifact.archive_download_url
     if ([string]::IsNullOrEmpty($token)) {
         $authstatus = (invoke-gh -silent -returnValue auth status --show-token) -join " "
         $token = $authStatus.SubString($authstatus.IndexOf('Token: ')+7).Trim()
