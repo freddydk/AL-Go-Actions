@@ -24,31 +24,13 @@ function InvokeWebRequest {
         Invoke-WebRequest  @params -Uri $uri
     }
     catch {
+        $errorRecord = $_
         $exception = $_.Exception
         $message = $exception.Message
-        Write-Host $message
         try {
-            $message += " $($_.Exception.Response.StatusDescription)"
-            Write-Host $message
-        }
-        catch {}
-        try {
-            $webException = [System.Net.WebException]$exception
-            Write-Host "is webexception"
-            $webResponse = $webException.Response
-            Write-Host "has response"
-            $reqstream = $webResponse.GetResponseStream()
-            Write-Host "got rs"
-            $sr = new-object System.IO.StreamReader $reqstream
-            Write-Host "got sr"
-            $result = $sr.ReadToEnd()
-            Write-Host "'$result'"
-            try {
-                $json = $result | ConvertFrom-Json
-                Write-Host $json.Message
-            }
-            catch {
-                Write-Host $result
+            $errorDetails = $errorRecord.ErrorDetails | ConvertFrom-Json
+            $errorDetails.psObject.Properties.name | ForEach-Object {
+                $message += "`r`n$($errorDetails."$_")"
             }
         }
         catch {}
@@ -468,10 +450,7 @@ function GetArtifacts {
     $per_page = 10
     $page = 1
     Write-Host "Analyzing artifacts"
-    CheckRateLimit
-    $headers | Out-Host
     do {
-        Write-Host "$api_url/repos/$repository/actions/artifacts?per_page=$($per_page)&page=$($page)"
         $artifacts = InvokeWebRequest -UseBasicParsing -Headers $headers -Uri "$api_url/repos/$repository/actions/artifacts?per_page=$($per_page)&page=$($page)" | ConvertFrom-Json
         $page++
         $result += @($artifacts.artifacts | Where-Object { $_.name -like $mask })
