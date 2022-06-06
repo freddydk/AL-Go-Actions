@@ -779,7 +779,7 @@ function Get-ProjectFolders {
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
     Write-Host "1"
     $settings.appFolders | Out-Host
-    $settings = AnalyzeRepo -settings $settings -baseFolder $baseFolder -doNotIssueWarnings -doNotCheckArtifactSetting
+    $settings = AnalyzeRepo -settings $settings -baseFolder $projectPath -doNotIssueWarnings -doNotCheckArtifactSetting
     $AlGoFolder = @()
     if ($includeALGoFolder) { $AlGoFolder = @(".AL-Go") }
 
