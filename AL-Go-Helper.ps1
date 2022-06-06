@@ -728,7 +728,7 @@ function AnalyzeRepo {
         Write-Host "A"
         $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
             Write-Host $_.GetType()
-            if ($_ -is [PSCustomObject]) {
+            if ($_.GetType().Name -eq "PSCustomObject") {
                 Write-Host "is customobject"
                 $_
             } 
