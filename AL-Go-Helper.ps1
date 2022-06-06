@@ -783,6 +783,7 @@ function Get-ProjectFolders {
 
     Set-Location $baseFolder
     @($settings.appFolders + $settings.testFolders + $settings.bcptTestFolders + $AlGoFolder) | ForEach-Object {
+        Write-Host "+ $_"
         $fullPath = Join-Path $projectPath $_ -Resolve
         $relativePath = Resolve-Path -Path $fullPath -Relative
         $relativePath.Substring(2).Replace('\','/')
