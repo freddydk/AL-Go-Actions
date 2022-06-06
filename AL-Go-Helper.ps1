@@ -405,30 +405,16 @@ function ReadSettings {
         "SendExtendedTelemetryToMicrosoft"       = $false
         "Environments"                           = @()
     }
-Write-host "1"
     $gitHubFolder = ".github"
-    Write-host "2"
     $repoSettingsPath = $RepoSettingsFile
     if (!(Test-Path (Join-Path $baseFolder $gitHubFolder) -PathType Container)) {
-        Write-host "3"
         $RepoSettingsPath = "..\$RepoSettingsFile"
-        Write-host "4"
         $gitHubFolder = "..\$gitHubFolder"
     }
-    Write-host "5"
     $workflowName = $workflowName.Split([System.IO.Path]::getInvalidFileNameChars()) -join ""
-    Write-host "6"
-    $RepoSettingsPath | Out-Host
-    $ALGoSettingsFile | Out-Host
-    (Join-Path $gitHubFolder "$workflowName.settings.json") | Out-Host
-    (Join-Path $ALGoFolder "$workflowName.settings.json") | Out-Host
-    (Join-Path $ALGoFolder "$userName.settings.json") | Out-Host
-write-host "go"
     $RepoSettingsPath, $ALGoSettingsFile, (Join-Path $gitHubFolder "$workflowName.settings.json"), (Join-Path $ALGoFolder "$workflowName.settings.json"), (Join-Path $ALGoFolder "$userName.settings.json") | ForEach-Object {
         $settingsFile = $_
-Write-host $settingsFile
         $settingsPath = Join-Path $baseFolder $settingsFile
-Write-host $settingspath
         if (Test-Path $settingsPath) {
             try {
                 Write-Host "Reading $settingsFile"
@@ -725,25 +711,16 @@ function AnalyzeRepo {
 
     Write-Host "Checking appDependencyProbingPaths"
     if ($settings.appDependencyProbingPaths) {
-        Write-Host "A"
         $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
-            Write-Host $_.GetType()
             if ($_.GetType().Name -eq "PSCustomObject") {
-                Write-Host "is customobject"
                 $_
             } 
             else { 
                 New-Object -Type PSObject -Property $_
             } 
         })
-        Write-Host "B"
-        $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
-            Write-Host $_.GetType()
-            if ($_ -is [PSCustomObject]) { $_ } else { New-Object -Type PSObject -Property $_ } 
-        })
         $settings.appDependencyProbingPaths | ForEach-Object {
             $dependency = $_
-            Write-Host $dependency.GetType()
             if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
                 throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
             }
@@ -845,11 +822,8 @@ function Get-ProjectFolders {
 
     $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
-Write-Host $projectPath    
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
-$settings | Out-Host
     $settings = AnalyzeRepo -settings $settings -baseFolder $projectPath -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
-$settings | Out-Host
     $AlGoFolderArr = @()
     if ($includeALGoFolder) { $AlGoFolderArr = @(".AL-Go") }
     Set-Location $baseFolder
@@ -880,9 +854,8 @@ $settings | Out-Host
                 }
                 else {
                     $depProject = $_
-                    Write-Host "> $($dependency.Repo)/$depProject"
+                    Write-Host "$($dependency.Repo)/$depProject"
                     $includeOnlyAppIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id } )
-                    $includeOnlyAppIds | Out-Host
                     Get-ProjectFolders -baseFolder $baseFolder -project $depProject -includeOnlyAppIds $includeOnlyAppIds -includeOtherProjects | ForEach-Object {
                         $folder = $_.ToLowerInvariant()
                         if (!$projectFolders.Contains($folder)) {

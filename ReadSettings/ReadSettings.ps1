@@ -124,13 +124,13 @@ try {
                     $filesChanged | Out-Host
                     $buildProjects = @($projects | Where-Object {
                         $project = $_
-                        $projectModified = $false
+                        $buildProject = $false
                         $projectFolders = Get-ProjectFolders -baseFolder $ENV:GITHUB_WORKSPACE -project $project -includeAlGoFolder -includeOtherProjects
                         $projectFolders | Out-Host
                         $projectFolders | ForEach-Object {
-                            if ($filesChanged -like "$_/*") { $projectModified = $true }
+                            if ($filesChanged -like "$_/*") { $buildProject = $true }
                         }
-                        $projectModified
+                        $buildProject
                     })
                     Write-Host "Modified projects: $($buildProjects -join ', ')"
                 }
