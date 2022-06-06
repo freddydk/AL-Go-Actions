@@ -464,7 +464,7 @@ function AnalyzeRepo {
         Write-Host "::group::Analyzing repository"
     }
 
-    $projectPath = Join-Path $baseFolder $poject -Resolve
+    $projectPath = Join-Path $baseFolder $project -Resolve
     Set-Location $projectPath
 
     # Check applicationDependency
