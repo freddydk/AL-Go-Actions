@@ -76,6 +76,9 @@ function Get-dependencies {
                 Write-Host -ForegroundColor Red "Could not find any $mask artifacts for projects $projects, version $($dependency.version)"
             }
         }
+        elseif ($dependency.release_status -eq "include") {
+            # folders have been included
+        }
         else {
             $releases = GetReleases -api_url $api_url -token $dependency.authTokenSecret -repository $repository
             if ($dependency.version -ne "latest") {
