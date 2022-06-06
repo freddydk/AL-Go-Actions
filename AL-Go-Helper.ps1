@@ -725,7 +725,7 @@ function AnalyzeRepo {
 
     Write-Host "Checking appDependencyProbingPaths"
     if ($settings.appDependencyProbingPaths) {
-        $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object { New-Object -Type PSObject -Property $_ } )
+        $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object { if ($_ -isnot [PSCustomObject]) { New-Object -Type PSObject -Property $_ } } )
         $settings.appDependencyProbingPaths | ForEach-Object {
             $dependency = $_
             if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
