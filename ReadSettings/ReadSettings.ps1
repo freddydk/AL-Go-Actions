@@ -125,7 +125,7 @@ try {
                     $buildProjects = @($projects | Where-Object {
                         $project = $_
                         $projectModified = $false
-                        $projectFolders = Get-ProjectFolders -baseFolder $ENV:GITHUB_WORKSPACE -project $project -includeAlGoFolder
+                        $projectFolders = Get-ProjectFolders -baseFolder $ENV:GITHUB_WORKSPACE -project $project -includeAlGoFolder -includeOtherProjects
                         $projectFolders | Out-Host
                         $projectFolders | ForEach-Object {
                             if ($filesChanged -like "$_/*") { $projectModified = $true }

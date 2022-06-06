@@ -58,31 +58,12 @@ function Get-dependencies {
     $downloadedList = @()
     $probingPathsJson | ForEach-Object {
         $dependency = $_
-        if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
-            throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
-        }
         if (-not ($dependency.PsObject.Properties.name -eq "AuthTokenSecret")) {
             Write-Host "Use token as AuthTokenSecret"
             $dependency | Add-Member -name "AuthTokenSecret" -MemberType NoteProperty -Value $token
         }
-        if (-not ($dependency.PsObject.Properties.name -eq "Version")) {
-            $dependency | Add-Member -name "Version" -MemberType NoteProperty -Value "latest"
-        }
-        if (-not ($dependency.PsObject.Properties.name -eq "Projects")) {
-            $dependency | Add-Member -name "Projects" -MemberType NoteProperty -Value "*"
-        }
-        if (-not ($dependency.PsObject.Properties.name -eq "release_status")) {
-            $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
-        }
-        if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
-            $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
-        }
 
         $projects = $dependency.projects
-        if ([string]::IsNullOrEmpty($dependency.projects)) {
-            $projects = "*"
-        }
-
         $repository = ([uri]$dependency.repo).AbsolutePath.Replace(".git", "").TrimStart("/")
         if ($dependency.release_status -eq "latestBuild") {
             $artifacts = GetArtifacts -token $dependency.authTokenSecret -api_url $api_url -repository $repository -mask $mask -projects $projects -version $dependency.version -branch $dependency.branch

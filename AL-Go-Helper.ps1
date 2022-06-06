@@ -453,7 +453,9 @@ function AnalyzeRepo {
         [string] $baseFolder,
         [string] $insiderSasToken,
         [switch] $doNotCheckArtifactSetting,
-        [switch] $doNotIssueWarnings
+        [switch] $doNotIssueWarnings,
+        [string] $server_url = $ENV:GITHUB_SERVER_URL,
+        [string] $repository = $ENV:GITHUB_REPOSITORY
     )
 
     if (!$runningLocal) {
@@ -708,6 +710,38 @@ function AnalyzeRepo {
         }
     }
 
+    Write-Host "Checking appDependencyProbingPaths"
+    if ($settings.appDependencyProbingPaths) {
+        $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object { New-Object -Type PSObject -Property $_ } )
+        $settings.appDependencyProbingPaths | ForEach-Object {
+            $dependency = $_
+            if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
+                throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
+            }
+            if ($dependency.Repo -eq ".") {
+                $dependency.Repo = "$server_url/$repository"
+            }
+            elseif ($dependency.Repo -notlike "https://*") {
+                $dependency.Repo = "$server_url/$($dependency.Repo)"
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "Version")) {
+                $dependency | Add-Member -name "Version" -MemberType NoteProperty -Value "latest"
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "Projects")) {
+                $dependency | Add-Member -name "Projects" -MemberType NoteProperty -Value "*"
+            }
+            elseif ([String]::IsNullOrEmpty($dependency.Projects)) {
+                $dependency.Projects = '*'
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "release_status")) {
+                $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
+                $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
+            }
+        }
+    }
+
     # unpack all dependencies and update app- and test dependencies from dependency apps
     $settings.appDependencies + $settings.testDependencies | ForEach-Object {
         $dep = $_
@@ -772,20 +806,60 @@ function Get-ProjectFolders {
     Param(
         [string] $baseFolder,
         [string] $project,
-        [switch] $includeALGoFolder
+        [switch] $includeALGoFolder,
+        [switch] $includeOtherProjects,
+        [string[]] $includeOnlyAppIds,
+        [string] $server_url = $ENV:GITHUB_SERVER_URL,
+        [string] $repository = $ENV:GITHUB_REPOSITORY
+
     )
 
+    $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
-    $settings = AnalyzeRepo -settings $settings -baseFolder $projectPath -doNotIssueWarnings -doNotCheckArtifactSetting
+    $settings = AnalyzeRepo -settings $settings -baseFolder $projectPath -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
     $AlGoFolder = @()
     if ($includeALGoFolder) { $AlGoFolder = @(".AL-Go") }
     Set-Location $baseFolder
     @($settings.appFolders + $settings.testFolders + $settings.bcptTestFolders + $AlGoFolder) | ForEach-Object {
         $fullPath = Join-Path $projectPath $_ -Resolve
         $relativePath = Resolve-Path -Path $fullPath -Relative
-        $relativePath.Substring(2).Replace('\','/')
+        $folder = $relativePath.Substring(2).Replace('\','/').ToLowerInvariant()
+        if ($includeOnlyAppIds) {
+            $appJsonFile = Join-Path $fullPath 'app.json'
+            if (Test-Path $appJsonFile) {
+                $appJson = Get-Content -Path $appJsonFile -Encoding UTF8 | ConvertFrom-Json
+                if ($includeOnlyAppIds.Contains($appJson.Id)) {
+                    $projectFolders += @($folder)
+                }
+            }
+        }
+        else {
+            $projectFolders += @($folder)
+        }
     }
+
+    if ($includeOtherProjects) {
+        $settings.appDependencyProbingPaths | Where-Object { $_.Repo -eq "$server_url/$repository" } | ForEach-Object {
+            $dependency = $_
+            $dependency.Projects.Split(',') | ForEach-Object {
+                if ($_ -eq '*') {
+                    OutputWarning "Dependencies to the same repository cannot specify all projects (*)"
+                }
+                else {
+                    $depProject = $_
+                    Write-Host "> $($dependency.Repo)/$depProject"
+                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($settings.appDependencies.id + $settings.testDependencies.id) -includeOtherProjects | ForEach-Object {
+                        $folder = $_.ToLowerInvariant()
+                        if (!$projectFolders.Contains($folder)) {
+                            $projectFolders += @($folder)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    $projectFolders
 }
 
 function installModules {
