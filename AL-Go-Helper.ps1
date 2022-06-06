@@ -808,15 +808,22 @@ function AnalyzeRepo {
                         else {
                             $depProject = $_
                             Write-Host "Identified dependency to project $depProject in the same repository"
-                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds @($settings.appDependencies | ForEach-Object { $_.id }) | ForEach-Object {
+                            Write-Host $baseFolder
+                            $appDependencyIds = @($settings.appDependencies | ForEach-Object { $_.id })
+                            $appDependencyIds | Out-Host
+                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds | ForEach-Object {
                                 $folder = $_.ToLowerInvariant()
                                 if (!$settings.appFolders.Contains($folder)) {
+                                    Write-Host "add $folder"
                                     $settings.appFolders += @($folder)
                                 }
                             }
-                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds @($settings.testDependencies | ForEach-Object { $_.id }) | ForEach-Object {
+                            $testAppDependencyIds = @($settings.testDependencies | ForEach-Object { $_.id })
+                            $testAppDependencyIds | Out-Host
+                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds | ForEach-Object {
                                 $folder = $_.ToLowerInvariant()
                                 if (!$settings.testFolders.Contains($folder)) {
+                                    Write-Host "add $folder"
                                     $settings.testFolders += @($folder)
                                 }
                             }
