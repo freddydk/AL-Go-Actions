@@ -333,7 +333,8 @@ function ReadSettings {
         [string] $baseFolder,
         [string] $repoName = "$env:GITHUB_REPOSITORY",
         [string] $workflowName = "",
-        [string] $userName = ""
+        [string] $userName = "",
+        [switch] $silent
     )
 
     $repoName = $repoName.SubString("$repoName".LastIndexOf('/') + 1)
@@ -820,6 +821,7 @@ function Get-ProjectFolders {
 
     )
 
+    Write-Host "Analyzing project $project"
     $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
@@ -854,7 +856,7 @@ function Get-ProjectFolders {
                 }
                 else {
                     $depProject = $_
-                    Write-Host "$($dependency.Repo)/$depProject"
+                    Write-Host "Identified dependency to project $depProject in the same repository"
                     $includeOnlyAppIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id } )
                     Get-ProjectFolders -baseFolder $baseFolder -project $depProject -includeOnlyAppIds $includeOnlyAppIds -includeOtherProjects | ForEach-Object {
                         $folder = $_.ToLowerInvariant()
