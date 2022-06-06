@@ -728,6 +728,7 @@ function AnalyzeRepo {
         $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object { if ($_ -is [PSCustomObject]) { $_ } else { New-Object -Type PSObject -Property $_ } } )
         $settings.appDependencyProbingPaths | ForEach-Object {
             $dependency = $_
+            Write-Host $dependency.GetType()
             if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
                 throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
             }
