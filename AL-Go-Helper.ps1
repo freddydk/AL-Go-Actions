@@ -850,7 +850,9 @@ function Get-ProjectFolders {
                 else {
                     $depProject = $_
                     Write-Host "> $($dependency.Repo)/$depProject"
-                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($settings.appDependencies.id + $settings.testDependencies.id) -includeOtherProjects | ForEach-Object {
+                    $includeOnlyAppIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id } )
+                    $includeOnlyAppIds | Out-Host
+                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -includeOnlyAppIds $includeOnlyAppIds -includeOtherProjects | ForEach-Object {
                         $folder = $_.ToLowerInvariant()
                         if (!$projectFolders.Contains($folder)) {
                             $projectFolders += @($folder)
