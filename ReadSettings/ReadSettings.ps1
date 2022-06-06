@@ -125,7 +125,9 @@ try {
                     $buildProjects = @($projects | Where-Object {
                         $project = $_
                         $projectModified = $false
+                        Write-Host "Checking project $project"
                         if (Get-ProjectFolders -baseFolder $ENV:GITHUB_WORKSPACE -project $project | Where-Object {
+                            Write-Host "- like $_/*"
                             $filesChanged -like "$_/*"
                         }) { $projectModified = $true }
                         $projectModified
