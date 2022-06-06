@@ -489,16 +489,6 @@ function AnalyzeRepo {
         throw "The type, specified in $ALGoSettingsFile, must be either 'Per Tenant Extension' or 'AppSource App'. It is '$($settings.type)'."
     }
 
-    $artifact = $settings.artifact
-    if ($artifact.Contains('{INSIDERSASTOKEN}')) {
-        if ($insiderSasToken) {
-            $artifact = $artifact.replace('{INSIDERSASTOKEN}', $insiderSasToken)
-        }
-        else {
-            throw "Artifact definition $artifact requires you to create a secret called InsiderSasToken, containing the Insider SAS Token from https://aka.ms/collaborate"
-        }
-    }
-
     if (-not (@($settings.appFolders)+@($settings.testFolders)+@($settings.bcptTestFolders))) {
         Get-ChildItem -Path $baseFolder -Directory | Where-Object { Test-Path -Path (Join-Path $_.FullName "app.json") } | ForEach-Object {
             $folder = $_
@@ -627,6 +617,16 @@ function AnalyzeRepo {
     Write-Host "Application Dependency $($settings.applicationDependency)"
 
     if (!$doNotCheckArtifactSetting) {
+        $artifact = $settings.artifact
+        if ($artifact.Contains('{INSIDERSASTOKEN}')) {
+            if ($insiderSasToken) {
+                $artifact = $artifact.replace('{INSIDERSASTOKEN}', $insiderSasToken)
+            }
+            else {
+                throw "Artifact definition $artifact requires you to create a secret called InsiderSasToken, containing the Insider SAS Token from https://aka.ms/collaborate"
+            }
+        }
+
         Write-Host "Checking artifact setting"
         if ($artifact -eq "" -and $settings.updateDependencies) {
             $artifact = Get-BCArtifactUrl -country $settings.country -select all | Where-Object { [Version]$_.Split("/")[4] -ge [Version]$settings.applicationDependency } | Select-Object -First 1
@@ -765,6 +765,27 @@ function AnalyzeRepo {
     $settings
     if (!$runningLocal) {
         Write-Host "::endgroup::"
+    }
+}
+
+function Get-ProjectFolders {
+    Param(
+        [string] $baseFolder,
+        [string] $project,
+        [switch] $includeALGoFolder
+    )
+
+    $projectPath = Join-Path $baseFolder $project
+    $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
+    $settings = AnalyzeRepo -settings $settings -baseFolder $baseFolder -doNotIssueWarnings -doNotCheckArtifactSetting
+    $AlGoFolder = @()
+    if ($includeALGoFolder) { $AlGoFolder = @(".AL-Go") }
+
+    Set-Location $baseFolder
+    @($settings.appFolders + $settings.testFolders + $settings.bcptFolders + $AlGoFolder) | ForEach-Object {
+        $fullPath = Join-Path $projectPath $_ -Resolve
+        $relativePath = Resolve-Path -Path $fullPath -Relative
+        $relativePath.Substring(2).Replace('\','/')
     }
 }
 
