@@ -756,6 +756,7 @@ function AnalyzeRepo {
     }
 
     Write-Host "Checking appDependencyProbingPaths"
+    Set-Location $projectPath
     if ($settings.appDependencyProbingPaths) {
         $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
             if ($_.GetType().Name -eq "PSCustomObject") {
