@@ -817,8 +817,11 @@ function Get-ProjectFolders {
 
     $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
+Write-Host $projectPath    
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
+$settings | Out-Host
     $settings = AnalyzeRepo -settings $settings -baseFolder $projectPath -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
+$settings | Out-Host
     $AlGoFolder = @()
     if ($includeALGoFolder) { $AlGoFolder = @(".AL-Go") }
     Set-Location $baseFolder
