@@ -812,7 +812,7 @@ function AnalyzeRepo {
                             $appDependencyIds = @($settings.appDependencies | ForEach-Object { $_.id })
                             $appDependencyIds | Out-Host
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds | ForEach-Object {
-                                $folder = $_.ToLowerInvariant()
+                                $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.appFolders.Contains($folder)) {
                                     Write-Host "add $folder"
                                     $settings.appFolders += @($folder)
@@ -821,7 +821,7 @@ function AnalyzeRepo {
                             $testAppDependencyIds = @($settings.testDependencies | ForEach-Object { $_.id })
                             $testAppDependencyIds | Out-Host
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds | ForEach-Object {
-                                $folder = $_.ToLowerInvariant()
+                                $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.testFolders.Contains($folder)) {
                                     Write-Host "add $folder"
                                     $settings.testFolders += @($folder)
