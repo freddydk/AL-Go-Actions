@@ -782,7 +782,7 @@ function Get-ProjectFolders {
     if ($includeALGoFolder) { $AlGoFolder = @(".AL-Go") }
 
     Set-Location $baseFolder
-    @($settings.appFolders + $settings.testFolders + $settings.bcptFolders + $AlGoFolder) | ForEach-Object {
+    @($settings.appFolders + $settings.testFolders + $settings.bcptTestFolders + $AlGoFolder) | ForEach-Object {
         $fullPath = Join-Path $projectPath $_ -Resolve
         $relativePath = Resolve-Path -Path $fullPath -Relative
         $relativePath.Substring(2).Replace('\','/')
