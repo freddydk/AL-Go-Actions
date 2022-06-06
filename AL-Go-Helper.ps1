@@ -414,8 +414,9 @@ function ReadSettings {
     $workflowName = $workflowName.Split([System.IO.Path]::getInvalidFileNameChars()) -join ""
     $RepoSettingsFile, $ALGoSettingsFile, (Join-Path $gitHubFolder "$workflowName.settings.json"), (Join-Path $ALGoFolder "$workflowName.settings.json"), (Join-Path $ALGoFolder "$userName.settings.json") | ForEach-Object {
         $settingsFile = $_
+Write-host $settingsFile
         $settingsPath = Join-Path $baseFolder $settingsFile
-        Write-Host "Checking $settingsFile"
+Write-host $settingspath
         if (Test-Path $settingsPath) {
             try {
                 Write-Host "Reading $settingsFile"
