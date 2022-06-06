@@ -418,6 +418,12 @@ Write-host "1"
     Write-host "5"
     $workflowName = $workflowName.Split([System.IO.Path]::getInvalidFileNameChars()) -join ""
     Write-host "6"
+    $RepoSettingsPath | Out-Host
+    $ALGoSettingsFile | Out-Host
+    (Join-Path $gitHubFolder "$workflowName.settings.json") | Out-Host
+    (Join-Path $ALGoFolder "$workflowName.settings.json") | Out-Host
+    (Join-Path $ALGoFolder "$userName.settings.json") | Out-Host
+write-host "go"
     $RepoSettingsPath, $ALGoSettingsFile, (Join-Path $gitHubFolder "$workflowName.settings.json"), (Join-Path $ALGoFolder "$workflowName.settings.json"), (Join-Path $ALGoFolder "$userName.settings.json") | ForEach-Object {
         $settingsFile = $_
 Write-host $settingsFile
