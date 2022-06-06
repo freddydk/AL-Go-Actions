@@ -125,11 +125,9 @@ try {
                     $buildProjects = @($projects | Where-Object {
                         $project = $_
                         $projectModified = $false
-                        Write-Host "Checking project $project"
                         $projectFolders = Get-ProjectFolders -baseFolder $ENV:GITHUB_WORKSPACE -project $project -includeAlGoFolder
                         $projectFolders | Out-Host
                         $projectFolders | ForEach-Object {
-                            Write-Host "- like $_/*"
                             if ($filesChanged -like "$_/*") { $projectModified = $true }
                         }
                         $projectModified
