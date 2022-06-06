@@ -333,8 +333,7 @@ function ReadSettings {
         [string] $baseFolder,
         [string] $repoName = "$env:GITHUB_REPOSITORY",
         [string] $workflowName = "",
-        [string] $userName = "",
-        [switch] $silent
+        [string] $userName = ""
     )
 
     $repoName = $repoName.SubString("$repoName".LastIndexOf('/') + 1)
@@ -450,9 +449,12 @@ function ReadSettings {
 function AnalyzeRepo {
     Param(
         [hashTable] $settings,
+        $token,
         [string] $baseFolder,
+        [string] $project,
         [string] $insiderSasToken,
         [switch] $doNotCheckArtifactSetting,
+        [switch] $doNotExpandAppDependencyProbingPaths,
         [switch] $doNotIssueWarnings,
         [string] $server_url = $ENV:GITHUB_SERVER_URL,
         [string] $repository = $ENV:GITHUB_REPOSITORY
@@ -462,7 +464,8 @@ function AnalyzeRepo {
         Write-Host "::group::Analyzing repository"
     }
 
-    Set-Location $baseFolder
+    $projectPath = Join-Path $baseFolder $poject -Resolve
+    Set-Location $projectPath
 
     # Check applicationDependency
     [Version]$settings.applicationDependency | Out-null
@@ -492,7 +495,7 @@ function AnalyzeRepo {
     }
 
     if (-not (@($settings.appFolders)+@($settings.testFolders)+@($settings.bcptTestFolders))) {
-        Get-ChildItem -Path $baseFolder -Directory | Where-Object { Test-Path -Path (Join-Path $_.FullName "app.json") } | ForEach-Object {
+        Get-ChildItem -Path $projectPath -Directory | Where-Object { Test-Path -Path (Join-Path $_.FullName "app.json") } | ForEach-Object {
             $folder = $_
             $appJson = Get-Content (Join-Path $folder.FullName "app.json") -Encoding UTF8 | ConvertFrom-Json
             $isTestApp = $false
@@ -548,7 +551,7 @@ function AnalyzeRepo {
         }
         $folders | ForEach-Object {
             $folderName = $_
-            $folder = Join-Path $baseFolder $folderName
+            $folder = Join-Path $projectPath $folderName
             $appJsonFile = Join-Path $folder "app.json"
             $bcptSuiteFile = Join-Path $folder "bcptSuite.json"
             $enumerate = $true
@@ -576,7 +579,7 @@ function AnalyzeRepo {
                 }
                 $expandFolders | ForEach-Object {
                     $folderName = $_
-                    $folder = Join-Path $baseFolder $folderName
+                    $folder = Join-Path $projectPath $folderName
                     $appJsonFile = Join-Path $folder "app.json"
                     if ($dependencies.Contains($folderName)) {
                         throw "$descr $folderName, specified in $ALGoSettingsFile, is specified more than once."
@@ -710,45 +713,6 @@ function AnalyzeRepo {
         }
     }
 
-    Write-Host "Checking appDependencyProbingPaths"
-    if ($settings.appDependencyProbingPaths) {
-        $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
-            if ($_.GetType().Name -eq "PSCustomObject") {
-                $_
-            } 
-            else { 
-                New-Object -Type PSObject -Property $_
-            } 
-        })
-        $settings.appDependencyProbingPaths | ForEach-Object {
-            $dependency = $_
-            if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
-                throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
-            }
-            if ($dependency.Repo -eq ".") {
-                $dependency.Repo = "$server_url/$repository"
-            }
-            elseif ($dependency.Repo -notlike "https://*") {
-                $dependency.Repo = "$server_url/$($dependency.Repo)"
-            }
-            if (-not ($dependency.PsObject.Properties.name -eq "Version")) {
-                $dependency | Add-Member -name "Version" -MemberType NoteProperty -Value "latest"
-            }
-            if (-not ($dependency.PsObject.Properties.name -eq "Projects")) {
-                $dependency | Add-Member -name "Projects" -MemberType NoteProperty -Value "*"
-            }
-            elseif ([String]::IsNullOrEmpty($dependency.Projects)) {
-                $dependency.Projects = '*'
-            }
-            if (-not ($dependency.PsObject.Properties.name -eq "release_status")) {
-                $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
-            }
-            if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
-                $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
-            }
-        }
-    }
-
     # unpack all dependencies and update app- and test dependencies from dependency apps
     $settings.appDependencies + $settings.testDependencies | ForEach-Object {
         $dep = $_
@@ -791,6 +755,78 @@ function AnalyzeRepo {
         }
     }
 
+    Write-Host "Checking appDependencyProbingPaths"
+    if ($settings.appDependencyProbingPaths) {
+        $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
+            if ($_.GetType().Name -eq "PSCustomObject") {
+                $_
+            } 
+            else { 
+                New-Object -Type PSObject -Property $_
+            } 
+        })
+        $settings.appDependencyProbingPaths | ForEach-Object {
+            $dependency = $_
+            if (-not ($dependency.PsObject.Properties.name -eq "repo")) {
+                throw "AppDependencyProbingPaths needs to contain a repo property, pointing to the repository on which you have a dependency"
+            }
+            if ($dependency.Repo -eq ".") {
+                $dependency.Repo = "$server_url/$repository"
+            }
+            elseif ($dependency.Repo -notlike "https://*") {
+                $dependency.Repo = "$server_url/$($dependency.Repo)"
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "AuthTokenSecret")) {
+                Write-Host "Use token as AuthTokenSecret"
+                $dependency | Add-Member -name "AuthTokenSecret" -MemberType NoteProperty -Value $token
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "Version")) {
+                $dependency | Add-Member -name "Version" -MemberType NoteProperty -Value "latest"
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "Projects")) {
+                $dependency | Add-Member -name "Projects" -MemberType NoteProperty -Value "*"
+            }
+            elseif ([String]::IsNullOrEmpty($dependency.Projects)) {
+                $dependency.Projects = '*'
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "release_status")) {
+                $dependency | Add-Member -name "release_status" -MemberType NoteProperty -Value "release"
+            }
+            if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
+                $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
+            }
+
+            if (!$doNotExpandAppDependencyProbingPaths -and $dependency.release_status -eq "include") {
+                if ($dependency.Repo -ne "$server_url/$repository") {
+                    OutputWarning "Dependencies with release_status 'include' must be to other projects in the same repository."
+                }
+                else {
+                    $dependency.Projects.Split(',') | ForEach-Object {
+                        if ($_ -eq '*') {
+                            OutputWarning "Dependencies to the same repository cannot specify all projects (*)"
+                        }
+                        else {
+                            $depProject = $_
+                            Write-Host "Identified dependency to project $depProject in the same repository"
+                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds @($settings.appDependencies | ForEach-Object { $_.id }) | ForEach-Object {
+                                $folder = $_.ToLowerInvariant()
+                                if (!$settings.appFolders.Contains($folder)) {
+                                    $settings.appFolders += @($folder)
+                                }
+                            }
+                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds @($settings.testDependencies | ForEach-Object { $_.id }) | ForEach-Object {
+                                $folder = $_.ToLowerInvariant()
+                                if (!$settings.testFolders.Contains($folder)) {
+                                    $settings.testFolders += @($folder)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (!$settings.doNotRunBcptTests -and -not $settings.bcptTestFolders) {
         if (!$doNotIssueWarnings) { OutputWarning -message "No performance test apps found in bcptTestFolders in $ALGoSettingsFile" }
         $settings.doNotRunBcptTests = $true
@@ -814,18 +850,17 @@ function Get-ProjectFolders {
         [string] $baseFolder,
         [string] $project,
         [switch] $includeALGoFolder,
-        [switch] $includeOtherProjects,
         [string[]] $includeOnlyAppIds,
         [string] $server_url = $ENV:GITHUB_SERVER_URL,
-        [string] $repository = $ENV:GITHUB_REPOSITORY
-
+        [string] $repository = $ENV:GITHUB_REPOSITORY,
+        $token
     )
 
     Write-Host "Analyzing project $project"
     $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
-    $settings = AnalyzeRepo -settings $settings -baseFolder $projectPath -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
+    $settings = AnalyzeRepo -settings $settings -token $token -baseFolder $baseFolder -project $project -doNotIssueWarnings -doNotCheckArtifactSetting -doNotExpandAppDependencyProbingPaths -server_url $server_url -repository $repository
     $AlGoFolderArr = @()
     if ($includeALGoFolder) { $AlGoFolderArr = @(".AL-Go") }
     Set-Location $baseFolder
@@ -847,9 +882,12 @@ function Get-ProjectFolders {
         }
     }
 
-    if ($includeOtherProjects) {
-        $settings.appDependencyProbingPaths | Where-Object { $_.Repo -eq "$server_url/$repository" } | ForEach-Object {
-            $dependency = $_
+    $settings.appDependencyProbingPaths | Where-Object { $_.release_status -eq "include" } | ForEach-Object {
+        $dependency = $_
+        if ($dependency.Repo -ne "$server_url/$repository") {
+            OutputWarning "Dependencies with release_status 'include' must be to other projects in the same repository."
+        }
+        else {
             $dependency.Projects.Split(',') | ForEach-Object {
                 if ($_ -eq '*') {
                     OutputWarning "Dependencies to the same repository cannot specify all projects (*)"
@@ -858,7 +896,7 @@ function Get-ProjectFolders {
                     $depProject = $_
                     Write-Host "Identified dependency to project $depProject in the same repository"
                     $includeOnlyAppIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id } )
-                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -includeOnlyAppIds $includeOnlyAppIds -includeOtherProjects | ForEach-Object {
+                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds | ForEach-Object {
                         $folder = $_.ToLowerInvariant()
                         if (!$projectFolders.Contains($folder)) {
                             $projectFolders += @($folder)
@@ -1163,6 +1201,7 @@ function CreateDevEnv {
         $workflowName = "$($kind)DevEnv"
         $params = @{
             "baseFolder" = $baseFolder
+            "project" = "."
             "workflowName" = $workflowName
         }
         if ($caller -eq "local") { $params += @{ "userName" = $userName } }
@@ -1274,8 +1313,8 @@ function CreateDevEnv {
         if ($repo.appDependencyProbingPaths) {
             Write-Host "Downloading dependencies ..."
             $repo.appDependencyProbingPaths = @($repo.appDependencyProbingPaths | ForEach-Object { New-Object -Type PSObject -Property $_ } )
-            $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "Apps" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' -token ""
-            Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "TestApps" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' -token "" | ForEach-Object {
+            $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "Apps" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com'
+            Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "TestApps" -saveToPath $buildArtifactFolder -api_url 'https://api.github.com' | ForEach-Object {
                 $installTestApps += "($_)"
             }
         }

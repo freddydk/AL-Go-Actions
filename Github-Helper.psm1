@@ -44,7 +44,6 @@ function InvokeWebRequest {
 function Get-dependencies {
     Param(
         $probingPathsJson,
-        $token,
         [string] $api_url = $ENV:GITHUB_API_URL,
         [string] $saveToPath = (Join-Path $ENV:GITHUB_WORKSPACE "dependencies"),
         [string] $mask = "Apps"
@@ -58,11 +57,6 @@ function Get-dependencies {
     $downloadedList = @()
     $probingPathsJson | ForEach-Object {
         $dependency = $_
-        if (-not ($dependency.PsObject.Properties.name -eq "AuthTokenSecret")) {
-            Write-Host "Use token as AuthTokenSecret"
-            $dependency | Add-Member -name "AuthTokenSecret" -MemberType NoteProperty -Value $token
-        }
-
         $projects = $dependency.projects
         $repository = ([uri]$dependency.repo).AbsolutePath.Replace(".git", "").TrimStart("/")
         if ($dependency.release_status -eq "latestBuild") {
