@@ -467,6 +467,8 @@ function AnalyzeRepo {
     $projectPath = Join-Path $baseFolder $project -Resolve
     Set-Location $projectPath
 
+    Write-Host "PROJECTPATH: $projectPath"
+
     # Check applicationDependency
     [Version]$settings.applicationDependency | Out-null
 
@@ -756,7 +758,6 @@ function AnalyzeRepo {
     }
 
     Write-Host "Checking appDependencyProbingPaths"
-    Set-Location $projectPath
     if ($settings.appDependencyProbingPaths) {
         $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
             if ($_.GetType().Name -eq "PSCustomObject") {
@@ -813,6 +814,7 @@ function AnalyzeRepo {
                             $appDependencyIds = @($settings.appDependencies | ForEach-Object { $_.id })
                             $appDependencyIds | Out-Host
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds | ForEach-Object {
+                                Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.appFolders.Contains($folder)) {
                                     Write-Host "add $folder"
@@ -822,6 +824,7 @@ function AnalyzeRepo {
                             $testAppDependencyIds = @($settings.testDependencies | ForEach-Object { $_.id })
                             $testAppDependencyIds | Out-Host
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds | ForEach-Object {
+                                Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.testFolders.Contains($folder)) {
                                     Write-Host "add $folder"
@@ -903,6 +906,7 @@ function Get-ProjectFolders {
                 else {
                     $depProject = $_
                     Write-Host "Identified dependency to project $depProject in the same repository"
+
                     $includeOnlyAppIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id } )
                     Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds | ForEach-Object {
                         $folder = $_.ToLowerInvariant()
