@@ -834,10 +834,10 @@ Write-Host $projectPath
 $settings | Out-Host
     $settings = AnalyzeRepo -settings $settings -baseFolder $projectPath -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
 $settings | Out-Host
-    $AlGoFolder = @()
-    if ($includeALGoFolder) { $AlGoFolder = @(".AL-Go") }
+    $AlGoFolderArr = @()
+    if ($includeALGoFolder) { $AlGoFolderArr = @(".AL-Go") }
     Set-Location $baseFolder
-    @($settings.appFolders + $settings.testFolders + $settings.bcptTestFolders + $AlGoFolder) | ForEach-Object {
+    @($settings.appFolders + $settings.testFolders + $settings.bcptTestFolders + $AlGoFolderArr) | ForEach-Object {
         $fullPath = Join-Path $projectPath $_ -Resolve
         $relativePath = Resolve-Path -Path $fullPath -Relative
         $folder = $relativePath.Substring(2).Replace('\','/').ToLowerInvariant()
