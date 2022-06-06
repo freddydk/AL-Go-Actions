@@ -757,6 +757,10 @@ function AnalyzeRepo {
         }
     }
 
+    if (!$runningLocal) {
+        Write-Host "::endgroup::"
+    }
+
     Write-Host "Checking appDependencyProbingPaths"
     if ($settings.appDependencyProbingPaths) {
         $settings.appDependencyProbingPaths = @($settings.appDependencyProbingPaths | ForEach-Object {
@@ -812,6 +816,7 @@ function AnalyzeRepo {
                             Write-Host "Identified dependency to project $depProject in the same repository"
                             Write-Host $baseFolder
                             $appDependencyIds = @($settings.appDependencies | ForEach-Object { $_.id })
+                            Write-Host "App Dependency IDs"
                             $appDependencyIds | Out-Host
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds | ForEach-Object {
                                 Set-Location $projectPath
@@ -822,6 +827,7 @@ function AnalyzeRepo {
                                 }
                             }
                             $testAppDependencyIds = @($settings.testDependencies | ForEach-Object { $_.id })
+                            Write-Host "Test App Dependency IDs"
                             $testAppDependencyIds | Out-Host
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds | ForEach-Object {
                                 Set-Location $projectPath
@@ -851,9 +857,6 @@ function AnalyzeRepo {
     }
 
     $settings
-    if (!$runningLocal) {
-        Write-Host "::endgroup::"
-    }
 }
 
 function Get-ProjectFolders {
