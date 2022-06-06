@@ -777,9 +777,14 @@ function Get-ProjectFolders {
 
     $projectPath = Join-Path $baseFolder $project
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
+    Write-Host "1"
+    $settings.appFolders | Out-Host
     $settings = AnalyzeRepo -settings $settings -baseFolder $baseFolder -doNotIssueWarnings -doNotCheckArtifactSetting
     $AlGoFolder = @()
     if ($includeALGoFolder) { $AlGoFolder = @(".AL-Go") }
+
+    Write-Host "2"
+    $settings.appFolders | Out-Host
 
     Set-Location $baseFolder
     @($settings.appFolders + $settings.testFolders + $settings.bcptTestFolders + $AlGoFolder) | ForEach-Object {
