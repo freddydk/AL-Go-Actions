@@ -817,7 +817,7 @@ function AnalyzeRepo {
                                 Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.appFolders.Contains($folder)) {
-                                    Write-Host "add $folder"
+                                    Write-Host "add appfolder $folder"
                                     $settings.appFolders += @($folder)
                                 }
                             }
@@ -826,8 +826,8 @@ function AnalyzeRepo {
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds | ForEach-Object {
                                 Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
-                                if (!$settings.testFolders.Contains($folder)) {
-                                    Write-Host "add $folder"
+                                if (!$settings.appFolders.Contains($folder) -and !$settings.testFolders.Contains($folder)) {
+                                    Write-Host "add test $folder"
                                     $settings.testFolders += @($folder)
                                 }
                             }
