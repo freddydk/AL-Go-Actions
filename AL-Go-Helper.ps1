@@ -446,6 +446,21 @@ function ReadSettings {
     $settings
 }
 
+function ExcludeUnneededApps {
+    Param(
+        [string[]] $folders,
+        [string[]] $includeOnlyAppIds,
+        [hashtable] $appIdFolders
+    )
+
+    $folders | ForEach-Object {
+        $folder = $_
+        if ($includeOnlyAppIds.Contains(($appIdFolders.GetEnumerator() | Where-Object { $_.Value -eq $folder }).Key)) {
+            $folder
+        }
+    }
+}
+
 function AnalyzeRepo {
     Param(
         [hashTable] $settings,
@@ -456,6 +471,7 @@ function AnalyzeRepo {
         [switch] $doNotCheckArtifactSetting,
         [switch] $doNotExpandAppDependencyProbingPaths,
         [switch] $doNotIssueWarnings,
+        [string[]] $includeOnlyAppIds,
         [string] $server_url = $ENV:GITHUB_SERVER_URL,
         [string] $repository = $ENV:GITHUB_REPOSITORY
     )
@@ -532,6 +548,7 @@ function AnalyzeRepo {
 
     Write-Host "Checking appFolders and testFolders"
     $dependencies = [ordered]@{}
+    $appIdFolders = [ordered]@{}
     1..3 | ForEach-Object {
         $appFolder = $_ -eq 1
         $testFolder = $_ -eq 2
@@ -586,9 +603,13 @@ function AnalyzeRepo {
                     if ($dependencies.Contains($folderName)) {
                         throw "$descr $folderName, specified in $ALGoSettingsFile, is specified more than once."
                     }
-                    $dependencies.Add("$folderName", @())
+                    $dependencies.Add($folderName, @())
                     try {
                         $appJson = Get-Content $appJsonFile -Encoding UTF8 | ConvertFrom-Json
+                        if ($appIdFolders.Contains($appJson.Id)) {
+                            throw "$descr $folderName contains a duplicate AppId ($($appIdFolders."$appJson.Id"))"
+                        }
+                        $appIdFolders.Add($appJson.Id, $folderName)
                         if ($appJson.PSObject.Properties.Name -eq 'Dependencies') {
                             $appJson.dependencies | ForEach-Object {
                                 if ($_.PSObject.Properties.Name -eq "AppId") {
@@ -622,6 +643,29 @@ function AnalyzeRepo {
         }
     }
     Write-Host "Application Dependency $($settings.applicationDependency)"
+
+    if ($includeOnlyAppIds) {
+        $i = 0
+        Write-Host "includeOnlyAppIds.1: $($includeOnlyAppIds -join ',')"
+        while ($i -lt $includeOnlyAppIds.Count) {
+            $id = $includeOnlyAppIds[$i]
+            if ($appIdFolders.Contains($id)) {
+                $dependencies."$($appIdFolders."$id")" | ForEach-Object {
+                    $includeOnlyAppIds += @($_.Id)
+                }
+            }
+            $i++
+        }
+Write-Host "includeOnlyAppIds.2: $($includeOnlyAppIds -join ',')"
+Write-Host "folders before:"
+$settings.appFolders | Out-Host
+        $settings.appFolders = @(ExcludeUnneededApps -folders $settings.appFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
+Write-Host "folders after:"
+$settings.appFolders | Out-Host
+Write-Host
+        $settings.testFolders = @(ExcludeUnneededApps -folders $settings.testFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
+        $settings.bcptTestFolders = @(ExcludeUnneededApps -folders $settings.bcptTestFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
+    }
 
     if (!$doNotCheckArtifactSetting) {
         $artifact = $settings.artifact
@@ -816,9 +860,9 @@ function AnalyzeRepo {
                             Write-Host "Identified dependency to project $depProject in the same repository"
                             Write-Host $baseFolder
                             $appDependencyIds = @($settings.appDependencies | ForEach-Object { $_.id })
-                            Write-Host "App Dependency IDs"
+                            Write-Host -ForegroundColor Green "App Dependency IDs"
                             $appDependencyIds | Out-Host
-                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds | ForEach-Object {
+                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds -includeApps -server_url $server_url -repository $repository | ForEach-Object {
                                 Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.appFolders.Contains($folder)) {
@@ -827,9 +871,9 @@ function AnalyzeRepo {
                                 }
                             }
                             $testAppDependencyIds = @($settings.testDependencies | ForEach-Object { $_.id })
-                            Write-Host "Test App Dependency IDs"
+Write-Host -ForegroundColor Green "Test App Dependency IDs"
                             $testAppDependencyIds | Out-Host
-                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds | ForEach-Object {
+                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds -includeTestApps -server_url $server_url -repository $repository | ForEach-Object {
                                 Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.appFolders.Contains($folder) -and !$settings.testFolders.Contains($folder)) {
@@ -865,6 +909,8 @@ function Get-ProjectFolders {
         [string] $project,
         [switch] $includeALGoFolder,
         [string[]] $includeOnlyAppIds,
+        [switch] $includeApps,
+        [switch] $includeTestApps,
         [string] $server_url = $ENV:GITHUB_SERVER_URL,
         [string] $repository = $ENV:GITHUB_REPOSITORY,
         $token
@@ -874,7 +920,7 @@ function Get-ProjectFolders {
     $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
-    $settings = AnalyzeRepo -settings $settings -token $token -baseFolder $baseFolder -project $project -doNotIssueWarnings -doNotCheckArtifactSetting -doNotExpandAppDependencyProbingPaths -server_url $server_url -repository $repository
+    $settings = AnalyzeRepo -settings $settings -token $token -baseFolder $baseFolder -project $project -includeOnlyAppIds $includeOnlyAppIds -doNotIssueWarnings -doNotCheckArtifactSetting -doNotExpandAppDependencyProbingPaths -server_url $server_url -repository $repository
     $AlGoFolderArr = @()
     if ($includeALGoFolder) { $AlGoFolderArr = @(".AL-Go") }
     Set-Location $baseFolder
@@ -904,14 +950,19 @@ function Get-ProjectFolders {
         else {
             $dependency.Projects.Split(',') | ForEach-Object {
                 if ($_ -eq '*') {
-                    OutputWarning "Dependencies to the same repository cannot specify all projects (*)"
+                    OutputWarning "Dependencies to the same repository cannot specify all projects (*)."
                 }
                 else {
                     $depProject = $_
-                    Write-Host "Identified dependency to project $depProject in the same repository"
+                    Write-Host "Identified dependency to project $depProject in the same repository."
 
-                    $includeOnlyAppIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id } )
-                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds | ForEach-Object {
+                    if ($includeApps) {
+                        $includeOnlyAppIds = @( @($settings.appDependencies) | ForEach-Object { $_.id } )
+                    }
+                    if ($includeTestApps) {
+                        $includeOnlyAppIds = @( @($settings.testDependencies) | ForEach-Object { $_.id } )
+                    }
+                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds -includeApps:$includeApps -includeTestApps:$includeTestApps | ForEach-Object {
                         $folder = $_.ToLowerInvariant()
                         if (!$projectFolders.Contains($folder)) {
                             $projectFolders += @($folder)
