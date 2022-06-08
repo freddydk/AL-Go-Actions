@@ -867,9 +867,7 @@ function AnalyzeRepo {
                                 $propertyName = $_
                                 $depSettings."$propertyName" | ForEach-Object {
                                     $folder = (Resolve-Path -Path (Join-Path $depProjectPath $_) -Relative).ToLowerInvariant()
-                                    Write-Host "check $folder to $propertyName"
                                     if (!$settings."$propertyName".Contains($folder)) {
-                                        Write-Host "add $folder to $propertyName"
                                         $settings."$propertyName" += @($folder)
                                     }
                                 }
