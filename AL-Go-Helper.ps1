@@ -982,7 +982,9 @@ function Get-ProjectFolders {
                     }
                     Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds -includeApps:$includeApps -includeTestApps:$includeTestApps | ForEach-Object {
                         $folder = $_.ToLowerInvariant()
+                        Write-Host "CHECK $folder"
                         if (!$projectFolders.Contains($folder)) {
+                            Write-Host "ADD $folder"
                             $projectFolders += @($folder)
                         }
                     }
@@ -990,6 +992,8 @@ function Get-ProjectFolders {
             }
         }
     }
+    WRITE-HOST "PROJECTFOLDERS:"
+    $projectFolders | Out-Host
     $projectFolders
 }
 
