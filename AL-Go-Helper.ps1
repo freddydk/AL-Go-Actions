@@ -662,6 +662,7 @@ $settings.appFolders | Out-Host
         $settings.appFolders = @(ExcludeUnneededApps -folders $settings.appFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
 Write-Host "appfolders after:"
 $settings.appFolders | Out-Host
+
 Write-Host
 Write-Host "testfolders before:"
 $settings.testFolders | Out-Host
