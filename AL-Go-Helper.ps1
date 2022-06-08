@@ -865,8 +865,9 @@ $settings.testFolders | Out-Host
                             $depSettings = ReadSettings -baseFolder $depProjectPath -workflowName "CI/CD"
 
                             $dependency.alwaysInstallApps.GetType() | Out-Host
-                            $includeOnlyAppIds.GetType() | Out-Host
-                            $dependencyIds | Out-Host
+                            $dependency.alwaysInstallApps | Out-Host
+                            #$includeOnlyAppIds | Out-Host
+                            #$dependencyIds | Out-Host
 
                             $depSettings = AnalyzeRepo -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($dependencyIds + $includeOnlyAppIds + $dependency.alwaysInstallApps) -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
 
