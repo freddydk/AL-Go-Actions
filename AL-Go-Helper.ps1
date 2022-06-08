@@ -482,8 +482,6 @@ function AnalyzeRepo {
     $projectPath = Join-Path $baseFolder $project -Resolve
     Set-Location $projectPath
 
-    Write-Host "PROJECTPATH: $projectPath"
-
     # Check applicationDependency
     [Version]$settings.applicationDependency | Out-null
 
@@ -645,7 +643,6 @@ function AnalyzeRepo {
 
     if ($includeOnlyAppIds) {
         $i = 0
-        Write-Host "includeOnlyAppIds.1: $($includeOnlyAppIds -join ',')"
         while ($i -lt $includeOnlyAppIds.Count) {
             $id = $includeOnlyAppIds[$i]
             if ($appIdFolders.Contains($id)) {
@@ -655,20 +652,9 @@ function AnalyzeRepo {
             }
             $i++
         }
-Write-Host "includeOnlyAppIds.2: $($includeOnlyAppIds -join ',')"
-Write-Host "appfolders before:"
-$settings.appFolders | Out-Host
         $settings.appFolders = @(ExcludeUnneededApps -folders $settings.appFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
-Write-Host "appfolders after:"
-$settings.appFolders | Out-Host
-
-Write-Host
-Write-Host "testfolders before:"
-$settings.testFolders | Out-Host
         $settings.testFolders = @(ExcludeUnneededApps -folders $settings.testFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
-Write-Host "testfolders after:"
-$settings.testFolders | Out-Host
-                $settings.bcptTestFolders = @(ExcludeUnneededApps -folders $settings.bcptTestFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
+        $settings.bcptTestFolders = @(ExcludeUnneededApps -folders $settings.bcptTestFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
     }
 
     if (!$doNotCheckArtifactSetting) {
@@ -849,6 +835,9 @@ $settings.testFolders | Out-Host
             if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
                 $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
             }
+            if (-not ($dependency.PsObject.Properties.name -eq "installOnlyReferencedApps")) {
+                $dependency | Add-Member -name "installOnlyReferencedApps" -MemberType NoteProperty -Value $true
+            }
 
             if ($dependency.release_status -eq "include") {
                 if ($dependency.Repo -ne "$server_url/$repository") {
@@ -862,21 +851,22 @@ $settings.testFolders | Out-Host
                         else {
                             $depProject = $_
                             Write-Host "Identified dependency to project $depProject in the same repository"
-                            Write-Host $baseFolder
 
                             $dependencyIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id })
                             $depProjectPath = Join-Path $baseFolder $depProject
                             $depSettings = ReadSettings -baseFolder $depProjectPath -workflowName "CI/CD"
-                            $depSettings = AnalyzeRepo -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($dependencyIds+$includeOnlyAppIds) -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
+                            $params = @{}
+                            if ($dependency.installOnlyReferencedApps) {
+                                $params += @{ "includeOnlyAppIds" = @($dependencyIds+$includeOnlyAppIds) }
+                            }
+                            $depSettings = AnalyzeRepo @params -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
 
                             Set-Location $projectPath
                             "appFolders","testFolders" | ForEach-Object {
                                 $propertyName = $_
                                 $depSettings."$propertyName" | ForEach-Object {
                                     $folder = (Resolve-Path -Path (Join-Path $depProjectPath $_) -Relative).ToLowerInvariant()
-                                    Write-Host "? add $propertyName $folder"
                                     if (!$settings."$propertyName".Contains($folder)) {
-                                        Write-Host "add $propertyName $folder"
                                         $settings."$propertyName" += @($folder)
                                     }
                                 }
@@ -898,11 +888,6 @@ $settings.testFolders | Out-Host
     }
     if (-not $settings.appFolders) {
         if (!$doNotIssueWarnings) { OutputWarning -message "No apps found in appFolders in $ALGoSettingsFile" }
-    }
-
-    Write-Host "RETURN FROM ANALYZE"
-    if (!$settings.doNotRunTests -and $settings.testFolders) {
-        $settings.testFolders | Out-Host
     }
 
     $settings
