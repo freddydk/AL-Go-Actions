@@ -852,6 +852,7 @@ function AnalyzeRepo {
                             $depProject = $_
                             Write-Host "Identified dependency to project $depProject in the same repository"
 
+                            $dependency.alwaysInstallApps | Out-Host
                             $dependencyIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id })
                             $depProjectPath = Join-Path $baseFolder $depProject
                             $depSettings = ReadSettings -baseFolder $depProjectPath -workflowName "CI/CD"
@@ -862,7 +863,9 @@ function AnalyzeRepo {
                                 $propertyName = $_
                                 $depSettings."$propertyName" | ForEach-Object {
                                     $folder = (Resolve-Path -Path (Join-Path $depProjectPath $_) -Relative).ToLowerInvariant()
+                                    Write-Host "check $folder to $propertyName"
                                     if (!$settings."$propertyName".Contains($folder)) {
+                                        Write-Host "add $folder to $propertyName"
                                         $settings."$propertyName" += @($folder)
                                     }
                                 }
