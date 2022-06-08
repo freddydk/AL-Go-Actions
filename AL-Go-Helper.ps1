@@ -652,9 +652,17 @@ function AnalyzeRepo {
             }
             $i++
         }
+$includeOnlyAppIds | Out-Host
+$settings.appFolders | Out-Host
+$settings.testFolders | Out-Host
+
         $settings.appFolders = @(ExcludeUnneededApps -folders $settings.appFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
         $settings.testFolders = @(ExcludeUnneededApps -folders $settings.testFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
         $settings.bcptTestFolders = @(ExcludeUnneededApps -folders $settings.bcptTestFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
+
+        $includeOnlyAppIds | Out-Host
+        $settings.appFolders | Out-Host
+        $settings.testFolders | Out-Host
     }
 
     if (!$doNotCheckArtifactSetting) {
@@ -852,10 +860,14 @@ function AnalyzeRepo {
                             $depProject = $_
                             Write-Host "Identified dependency to project $depProject in the same repository"
 
-                            $dependency.alwaysInstallApps | Out-Host
                             $dependencyIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id })
                             $depProjectPath = Join-Path $baseFolder $depProject
                             $depSettings = ReadSettings -baseFolder $depProjectPath -workflowName "CI/CD"
+
+                            $dependency.alwaysInstallApps | Out-Host
+                            $includeOnlyAppIds | Out-Host
+                            $dependencyIds | Out-Host
+
                             $depSettings = AnalyzeRepo -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($dependencyIds + $includeOnlyAppIds + $dependency.alwaysInstallApps) -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
 
                             Set-Location $projectPath
