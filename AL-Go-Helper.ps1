@@ -646,10 +646,6 @@ function AnalyzeRepo {
 
     if ($includeOnlyAppIds) {
         $i = 0
-        $systemAppId, $baseAppId, $applicationAppId | ForEach-Object {
-            if (!$includeOnlyAppIds.Contains($_)) { $includeOnlyAppIds += @($_)}
-        }
-                
         Write-Host "includeOnlyAppIds.1: $($includeOnlyAppIds -join ',')"
         while ($i -lt $includeOnlyAppIds.Count) {
             $id = $includeOnlyAppIds[$i]
@@ -881,7 +877,7 @@ Write-Host -ForegroundColor Green "Test App Dependency IDs"
                                 Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
                                 if (!$settings.appFolders.Contains($folder) -and !$settings.testFolders.Contains($folder)) {
-                                    Write-Host "add test $folder"
+                                    Write-Host "add testfolder $folder"
                                     $settings.testFolders += @($folder)
                                 }
                             }
@@ -921,6 +917,12 @@ function Get-ProjectFolders {
     )
 
     Write-Host "Analyzing project $project"
+    if ($includeOnlyAppIds) {
+        $systemAppId, $baseAppId, $applicationAppId | ForEach-Object {
+            if (!$includeOnlyAppIds.Contains($_)) { $includeOnlyAppIds += @($_)}
+        }
+    }
+
     $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
