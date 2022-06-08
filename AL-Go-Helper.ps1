@@ -646,6 +646,10 @@ function AnalyzeRepo {
 
     if ($includeOnlyAppIds) {
         $i = 0
+        $systemAppId, $baseAppId, $applicationAppId | ForEach-Object {
+            if (!$includeOnlyAppIds.Contains($_)) { $includeOnlyAppIds += @($_)}
+        }
+                
         Write-Host "includeOnlyAppIds.1: $($includeOnlyAppIds -join ',')"
         while ($i -lt $includeOnlyAppIds.Count) {
             $id = $includeOnlyAppIds[$i]
