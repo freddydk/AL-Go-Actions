@@ -135,6 +135,9 @@ try {
                     Write-Host "Modified projects: $($buildProjects -join ', ')"
                 }
             }
+            else {
+                $buildProjects = $projects
+            }
         }
         if (Test-Path ".AL-Go" -PathType Container) {
             $buildProjects += @(".")
