@@ -52,15 +52,15 @@ function expandfile {
                 $appFolders += @($_.FullName)
             }
         }
+        Get-ChildItem $destinationPath -include @("*.zip", "*.app") -Recurse | ForEach-Object {
+            expandfile $_.FullName
+        }
         $appFolders | ForEach-Object {
             $newFolder = Join-Path $env:TEMP "$([Guid]::NewGuid().ToString())"
             write-Host "$_ -> $newFolder"
             Move-Item -Path $_ -Destination $newFolder -Force
             Write-Host "done"
             $newFolder
-        }
-        Get-ChildItem $destinationPath -include @("*.zip", "*.app") -Recurse | ForEach-Object {
-            expandfile $_.FullName
         }
         Remove-Item -Path $destinationPath -Force -Recurse -ErrorAction SilentlyContinue
     }
