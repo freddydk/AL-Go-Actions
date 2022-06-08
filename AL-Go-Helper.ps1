@@ -941,7 +941,7 @@ function Get-ProjectFolders {
             $appJsonFile = Join-Path $fullPath 'app.json'
             if (Test-Path $appJsonFile) {
                 $appJson = Get-Content -Path $appJsonFile -Encoding UTF8 | ConvertFrom-Json
-                if ($includeOnlyAppIds.Contains($appJson.Id)) {
+                if ($includeOnlyAppIds.Contains($appJson.Id) -and !$projectFolders.contains($folder)) {
                     $projectFolders += @($folder)
                 }
             }
@@ -951,8 +951,8 @@ function Get-ProjectFolders {
         }
     }
 
-    WRITE-HOST "PROJECTFOLDERS:"
-    $projectFolders | Out-Host
+    Write-Host "Project $project folders:"
+    $projectFolders | ForEach-Object { Write-Host "- $_" }
     $projectFolders
 }
 
