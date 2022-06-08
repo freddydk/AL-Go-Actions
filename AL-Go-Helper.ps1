@@ -835,8 +835,8 @@ function AnalyzeRepo {
             if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
                 $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
             }
-            if (-not ($dependency.PsObject.Properties.name -eq "installOnlyReferencedApps")) {
-                $dependency | Add-Member -name "installOnlyReferencedApps" -MemberType NoteProperty -Value $true
+            if (-not ($dependency.PsObject.Properties.name -eq "alwaysInstallApps")) {
+                $dependency | Add-Member -name "alwaysInstallApps" -MemberType NoteProperty -Value @()
             }
 
             if ($dependency.release_status -eq "include") {
@@ -855,11 +855,7 @@ function AnalyzeRepo {
                             $dependencyIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id })
                             $depProjectPath = Join-Path $baseFolder $depProject
                             $depSettings = ReadSettings -baseFolder $depProjectPath -workflowName "CI/CD"
-                            $params = @{}
-                            if ($dependency.installOnlyReferencedApps) {
-                                $params += @{ "includeOnlyAppIds" = @($dependencyIds+$includeOnlyAppIds) }
-                            }
-                            $depSettings = AnalyzeRepo @params -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
+                            $depSettings = AnalyzeRepo -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($dependencyIds + $includeOnlyAppIds + $dependency.alwaysInstallApps) -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
 
                             Set-Location $projectPath
                             "appFolders","testFolders" | ForEach-Object {
