@@ -657,14 +657,18 @@ function AnalyzeRepo {
             $i++
         }
 Write-Host "includeOnlyAppIds.2: $($includeOnlyAppIds -join ',')"
-Write-Host "folders before:"
+Write-Host "appfolders before:"
 $settings.appFolders | Out-Host
         $settings.appFolders = @(ExcludeUnneededApps -folders $settings.appFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
-Write-Host "folders after:"
+Write-Host "appfolders after:"
 $settings.appFolders | Out-Host
 Write-Host
+Write-Host "testfolders before:"
+$settings.testFolders | Out-Host
         $settings.testFolders = @(ExcludeUnneededApps -folders $settings.testFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
-        $settings.bcptTestFolders = @(ExcludeUnneededApps -folders $settings.bcptTestFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
+Write-Host "testfolders after:"
+$settings.testFolders | Out-Host
+                $settings.bcptTestFolders = @(ExcludeUnneededApps -folders $settings.bcptTestFolders -includeOnlyAppIds $includeOnlyAppIds -appIdFolders $appIdFolders)
     }
 
     if (!$doNotCheckArtifactSetting) {
