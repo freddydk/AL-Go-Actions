@@ -907,6 +907,9 @@ Write-Host -ForegroundColor Green "Test App Dependency IDs"
         if (!$doNotIssueWarnings) { OutputWarning -message "No apps found in appFolders in $ALGoSettingsFile" }
     }
 
+    Write-Host "RETURN FROM ANALYZE"
+    $settings.testfolders | Out-Host
+
     $settings
 }
 
