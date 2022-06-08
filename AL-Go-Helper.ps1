@@ -846,6 +846,9 @@ $settings.testFolders | Out-Host
             if (-not ($dependency.PsObject.Properties.name -eq "alwaysInstallApps")) {
                 $dependency | Add-Member -name "alwaysInstallApps" -MemberType NoteProperty -Value @()
             }
+            elseif ($dependency.alwaysInstallApps -is [string]) {
+                $dependency.alwaysInstallApps = $dependency.alwaysInstallApps.Split(' ')
+            }
 
             if ($dependency.release_status -eq "include") {
                 if ($dependency.Repo -ne "$server_url/$repository") {
