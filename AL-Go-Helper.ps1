@@ -908,7 +908,9 @@ Write-Host -ForegroundColor Green "Test App Dependency IDs"
     }
 
     Write-Host "RETURN FROM ANALYZE"
-    $settings.testfolders | Out-Host
+    if ($settings.testfolders) {
+        $settings.testfolders | Out-Host
+    }
 
     $settings
 }
