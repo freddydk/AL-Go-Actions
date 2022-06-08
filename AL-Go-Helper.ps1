@@ -469,7 +469,6 @@ function AnalyzeRepo {
         [string] $project,
         [string] $insiderSasToken,
         [switch] $doNotCheckArtifactSetting,
-        [switch] $doNotExpandAppDependencyProbingPaths,
         [switch] $doNotIssueWarnings,
         [string[]] $includeOnlyAppIds,
         [string] $server_url = $ENV:GITHUB_SERVER_URL,
@@ -851,7 +850,7 @@ $settings.testFolders | Out-Host
                 $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
             }
 
-            if (!$doNotExpandAppDependencyProbingPaths -and $dependency.release_status -eq "include") {
+            if ($dependency.release_status -eq "include") {
                 if ($dependency.Repo -ne "$server_url/$repository") {
                     OutputWarning "Dependencies with release_status 'include' must be to other projects in the same repository."
                 }
@@ -864,28 +863,22 @@ $settings.testFolders | Out-Host
                             $depProject = $_
                             Write-Host "Identified dependency to project $depProject in the same repository"
                             Write-Host $baseFolder
-                            $appDependencyIds = @($settings.appDependencies | ForEach-Object { $_.id })
-                            Write-Host -ForegroundColor Green "App Dependency IDs"
-                            $appDependencyIds | Out-Host
-                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds -includeApps -server_url $server_url -repository $repository | ForEach-Object {
-                                Set-Location $projectPath
-                                $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
-                                Write-Host "? add appfolder $folder"
-                                if (!$settings.appFolders.Contains($folder)) {
-                                    Write-Host "add appfolder $folder"
-                                    $settings.appFolders += @($folder)
-                                }
-                            }
-                            $testAppDependencyIds = @($settings.testDependencies | ForEach-Object { $_.id })
-Write-Host -ForegroundColor Green "Test App Dependency IDs"
-                            $testAppDependencyIds | Out-Host
-                            Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds -includeTestApps -server_url $server_url -repository $repository | ForEach-Object {
-                                Set-Location $projectPath
-                                $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
-                                Write-Host "? add testfolder $folder"
-                                if (!$settings.appFolders.Contains($folder) -and !$settings.testFolders.Contains($folder)) {
-                                    Write-Host "add testfolder $folder"
-                                    $settings.testFolders += @($folder)
+
+                            $dependencyIds = @( @($settings.appDependencies + $settings.testDependencies) | ForEach-Object { $_.id })
+                            $depProjectPath = Join-Path $baseFolder $depProject
+                            $depSettings = ReadSettings -baseFolder $depProjectPath -workflowName "CI/CD"
+                            $depSettings = AnalyzeRepo -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($dependencyIds+$includeOnlyAppIds) -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
+
+                            Set-Location $projectPath
+                            "appFolders","testFolders" | ForEach-Object {
+                                $propertyName = $_
+                                $depSettings."$propertyName" | ForEach-Object {
+                                    $folder = (Resolve-Path -Path (Join-Path $depProjectPath $_) -Relative).ToLowerInvariant()
+                                    Write-Host "? add $propertyName $folder"
+                                    if (!$settings."$propertyName".Contains($folder)) {
+                                        Write-Host "add $propertyName $folder"
+                                        $settings."$propertyName" += @($folder)
+                                    }
                                 }
                             }
                         }
@@ -921,8 +914,6 @@ function Get-ProjectFolders {
         [string] $project,
         [switch] $includeALGoFolder,
         [string[]] $includeOnlyAppIds,
-        [switch] $includeApps,
-        [switch] $includeTestApps,
         [string] $server_url = $ENV:GITHUB_SERVER_URL,
         [string] $repository = $ENV:GITHUB_REPOSITORY,
         $token
@@ -938,7 +929,7 @@ function Get-ProjectFolders {
     $projectFolders = @()
     $projectPath = Join-Path $baseFolder $project
     $settings = ReadSettings -baseFolder $projectPath -workflowName "CI/CD"
-    $settings = AnalyzeRepo -settings $settings -token $token -baseFolder $baseFolder -project $project -includeOnlyAppIds $includeOnlyAppIds -doNotIssueWarnings -doNotCheckArtifactSetting -doNotExpandAppDependencyProbingPaths -server_url $server_url -repository $repository
+    $settings = AnalyzeRepo -settings $settings -token $token -baseFolder $baseFolder -project $project -includeOnlyAppIds $includeOnlyAppIds -doNotIssueWarnings -server_url $server_url -repository $repository
     $AlGoFolderArr = @()
     if ($includeALGoFolder) { $AlGoFolderArr = @(".AL-Go") }
     Set-Location $baseFolder
@@ -960,38 +951,38 @@ function Get-ProjectFolders {
         }
     }
 
-    $settings.appDependencyProbingPaths | Where-Object { $_.release_status -eq "include" } | ForEach-Object {
-        $dependency = $_
-        if ($dependency.Repo -ne "$server_url/$repository") {
-            OutputWarning "Dependencies with release_status 'include' must be to other projects in the same repository."
-        }
-        else {
-            $dependency.Projects.Split(',') | ForEach-Object {
-                if ($_ -eq '*') {
-                    OutputWarning "Dependencies to the same repository cannot specify all projects (*)."
-                }
-                else {
-                    $depProject = $_
-                    Write-Host "Identified dependency to project $depProject in the same repository."
-
-                    if ($includeApps) {
-                        $includeOnlyAppIds = @( @($settings.appDependencies) | ForEach-Object { $_.id } )
-                    }
-                    if ($includeTestApps) {
-                        $includeOnlyAppIds = @( @($settings.testDependencies) | ForEach-Object { $_.id } )
-                    }
-                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds -includeApps:$includeApps -includeTestApps:$includeTestApps | ForEach-Object {
-                        $folder = $_.ToLowerInvariant()
-                        Write-Host "CHECK $folder"
-                        if (!$projectFolders.Contains($folder)) {
-                            Write-Host "ADD $folder"
-                            $projectFolders += @($folder)
-                        }
-                    }
-                }
-            }
-        }
-    }
+#    $settings.appDependencyProbingPaths | Where-Object { $_.release_status -eq "include" } | ForEach-Object {
+#        $dependency = $_
+#        if ($dependency.Repo -ne "$server_url/$repository") {
+#            OutputWarning "Dependencies with release_status 'include' must be to other projects in the same repository."
+#        }
+#        else {
+#            $dependency.Projects.Split(',') | ForEach-Object {
+#                if ($_ -eq '*') {
+#                    OutputWarning "Dependencies to the same repository cannot specify all projects (*)."
+#                }
+#                else {
+#                    $depProject = $_
+#                    Write-Host "Identified dependency to project $depProject in the same repository."
+#
+#                    if ($includeApps) {
+#                        $includeOnlyAppIds = @( @($settings.appDependencies) | ForEach-Object { $_.id } )
+#                    }
+#                    if ($includeTestApps) {
+#                        $includeOnlyAppIds = @( @($settings.testDependencies) | ForEach-Object { $_.id } )
+#                    }
+#                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds -includeApps:$includeApps -includeTestApps:$includeTestApps | ForEach-Object {
+#                        $folder = $_.ToLowerInvariant()
+#                        Write-Host "CHECK $folder"
+#                        if (!$projectFolders.Contains($folder)) {
+#                            Write-Host "ADD $folder"
+#                            $projectFolders += @($folder)
+#                        }
+#                    }
+#                }
+#            }
+#        }
+#    }
     WRITE-HOST "PROJECTFOLDERS:"
     $projectFolders | Out-Host
     $projectFolders
