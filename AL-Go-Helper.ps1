@@ -951,38 +951,6 @@ function Get-ProjectFolders {
         }
     }
 
-#    $settings.appDependencyProbingPaths | Where-Object { $_.release_status -eq "include" } | ForEach-Object {
-#        $dependency = $_
-#        if ($dependency.Repo -ne "$server_url/$repository") {
-#            OutputWarning "Dependencies with release_status 'include' must be to other projects in the same repository."
-#        }
-#        else {
-#            $dependency.Projects.Split(',') | ForEach-Object {
-#                if ($_ -eq '*') {
-#                    OutputWarning "Dependencies to the same repository cannot specify all projects (*)."
-#                }
-#                else {
-#                    $depProject = $_
-#                    Write-Host "Identified dependency to project $depProject in the same repository."
-#
-#                    if ($includeApps) {
-#                        $includeOnlyAppIds = @( @($settings.appDependencies) | ForEach-Object { $_.id } )
-#                    }
-#                    if ($includeTestApps) {
-#                        $includeOnlyAppIds = @( @($settings.testDependencies) | ForEach-Object { $_.id } )
-#                    }
-#                    Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $includeOnlyAppIds -includeApps:$includeApps -includeTestApps:$includeTestApps | ForEach-Object {
-#                        $folder = $_.ToLowerInvariant()
-#                        Write-Host "CHECK $folder"
-#                        if (!$projectFolders.Contains($folder)) {
-#                            Write-Host "ADD $folder"
-#                            $projectFolders += @($folder)
-#                        }
-#                    }
-#                }
-#            }
-#        }
-#    }
     WRITE-HOST "PROJECTFOLDERS:"
     $projectFolders | Out-Host
     $projectFolders
