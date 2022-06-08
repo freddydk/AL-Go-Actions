@@ -870,6 +870,7 @@ $settings.testFolders | Out-Host
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $appDependencyIds -includeApps -server_url $server_url -repository $repository | ForEach-Object {
                                 Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
+                                Write-Host "? add appfolder $folder"
                                 if (!$settings.appFolders.Contains($folder)) {
                                     Write-Host "add appfolder $folder"
                                     $settings.appFolders += @($folder)
@@ -881,6 +882,7 @@ Write-Host -ForegroundColor Green "Test App Dependency IDs"
                             Get-ProjectFolders -baseFolder $baseFolder -project $depProject -token $token -includeOnlyAppIds $testAppDependencyIds -includeTestApps -server_url $server_url -repository $repository | ForEach-Object {
                                 Set-Location $projectPath
                                 $folder = (Resolve-Path -Path (Join-Path $baseFolder $_) -Relative).ToLowerInvariant()
+                                Write-Host "? add testfolder $folder"
                                 if (!$settings.appFolders.Contains($folder) -and !$settings.testFolders.Contains($folder)) {
                                     Write-Host "add testfolder $folder"
                                     $settings.testFolders += @($folder)
