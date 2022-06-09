@@ -817,15 +817,8 @@ function AnalyzeRepo {
             elseif ($dependency.Repo -notlike "https://*") {
                 $dependency.Repo = "$server_url/$($dependency.Repo)"
             }
-            if (-not ($dependency.PsObject.Properties.name -eq "AuthTokenSecret")) {
-                Write-Host "Use token as AuthTokenSecret"
-                $dependency | Add-Member -name "AuthTokenSecret" -MemberType NoteProperty -Value $token
-            }
             if (-not ($dependency.PsObject.Properties.name -eq "Version")) {
                 $dependency | Add-Member -name "Version" -MemberType NoteProperty -Value "latest"
-            }
-            if (-not ($dependency.PsObject.Properties.name -eq "Projects")) {
-                $dependency | Add-Member -name "Projects" -MemberType NoteProperty -Value "*"
             }
             elseif ([String]::IsNullOrEmpty($dependency.Projects)) {
                 $dependency.Projects = '*'
@@ -836,11 +829,19 @@ function AnalyzeRepo {
             if (-not ($dependency.PsObject.Properties.name -eq "branch")) {
                 $dependency | Add-Member -name "branch" -MemberType NoteProperty -Value "main"
             }
-            if (-not ($dependency.PsObject.Properties.name -eq "alwaysInstallApps")) {
-                $dependency | Add-Member -name "alwaysInstallApps" -MemberType NoteProperty -Value @()
+            Write-Host "Dependency to projects '$($dependency.Projects)' in $($dependency.Repo)@$($dependency.branch), version $($dependency.version), release status $($dependency.release_status)"
+            if (-not ($dependency.PsObject.Properties.name -eq "AuthTokenSecret")) {
+                Write-Host "Using token as AuthTokenSecret"
+                $dependency | Add-Member -name "AuthTokenSecret" -MemberType NoteProperty -Value $token
             }
-            elseif ($dependency.alwaysInstallApps -is [string]) {
-                $dependency.alwaysInstallApps = $dependency.alwaysInstallApps.Split(' ')
+            if (-not ($dependency.PsObject.Properties.name -eq "alwaysIncludeApps")) {
+                $dependency | Add-Member -name "alwaysIncludeApps" -MemberType NoteProperty -Value @()
+            }
+            elseif ($dependency.alwaysIncludeApps -is [string]) {
+                $dependency.alwaysIncludeApps = $dependency.alwaysIncludeApps.Split(' ')
+            }
+            if ($dependency.alwaysIncludeApps) {
+                Write-Host "Always including apps: $($dependency.alwaysIncludeApps -join ", ")"
             }
 
             if ($dependency.release_status -eq "include") {
@@ -860,17 +861,22 @@ function AnalyzeRepo {
                             $depProjectPath = Join-Path $baseFolder $depProject
                             $depSettings = ReadSettings -baseFolder $depProjectPath -workflowName "CI/CD"
 
-                            $depSettings = AnalyzeRepo -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($dependencyIds + $includeOnlyAppIds + $dependency.alwaysInstallApps) -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
+                            $depSettings = AnalyzeRepo -settings $depSettings -token $token -baseFolder $baseFolder -project $depProject -includeOnlyAppIds @($dependencyIds + $includeOnlyAppIds + $dependency.alwaysIncludeApps) -doNotIssueWarnings -doNotCheckArtifactSetting -server_url $server_url -repository $repository
 
                             Set-Location $projectPath
                             "appFolders","testFolders" | ForEach-Object {
                                 $propertyName = $_
+                                Write-Host "Adding folders to $_"
+                                $found = $true
                                 $depSettings."$propertyName" | ForEach-Object {
                                     $folder = (Resolve-Path -Path (Join-Path $depProjectPath $_) -Relative).ToLowerInvariant()
                                     if (!$settings."$propertyName".Contains($folder)) {
                                         $settings."$propertyName" += @($folder)
+                                        $found = $true
+                                        Write-Host "- $folder"
                                     }
                                 }
+                                if (!$found) { Write-Host "- No folders added" }
                             }
                         }
                     }
