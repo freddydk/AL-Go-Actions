@@ -866,7 +866,7 @@ function AnalyzeRepo {
                             Set-Location $projectPath
                             "appFolders","testFolders" | ForEach-Object {
                                 $propertyName = $_
-                                Write-Host "Adding folders to $_"
+                                Write-Host "Adding folders from $depProject to $_"
                                 $found = $true
                                 $depSettings."$propertyName" | ForEach-Object {
                                     $folder = (Resolve-Path -Path (Join-Path $depProjectPath $_) -Relative).ToLowerInvariant()
