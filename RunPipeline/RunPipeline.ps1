@@ -33,16 +33,25 @@ try {
         docker pull --quiet $genericImageName
     } -ArgumentList $genericImageName | Out-Null
 
+    $containerName = GetContainerName($project)
+
     $runAlPipelineParams = @{}
     if ($project  -eq ".") { $project = "" }
     $baseFolder = $ENV:GITHUB_WORKSPACE
+    if ($bcContainerHelperConfig.useVolumes -and $bcContainerHelperConfig.hostHelperFolder -eq "HostHelperFolder") {
+        $allVolumes = "{$(((docker volume ls --format "'{{.Name}}': '{{.Mountpoint}}'") -join ",").Replace('\','\\').Replace("'",'"'))}" | ConvertFrom-Json | ConvertTo-HashTable
+        $pipelineFolder = Join-Path $allVolumes.hostHelperFolder $containerName
+        New-Item -Path $pipelineFolder -ItemType Directory | Out-Null
+        Move-Item -Path $ENV:GITHUB_WORKSPACE -Destination $pipelineFolder
+        $baseFolder = Join-Path $pipelineFolder (get-item $ENV:GITHUB_WORKSPACE).BaseName
+    }
+
     $projectPath = Join-Path $baseFolder $project
     $sharedFolder = ""
     if ($project) {
-        $sharedFolder = $ENV:GITHUB_WORKSPACE
+        $sharedFolder = $baseFolder
     }
     $workflowName = $env:GITHUB_WORKFLOW
-    $containerName = GetContainerName($project)
 
     Write-Host "use settings and secrets"
     $settings = $settingsJson | ConvertFrom-Json | ConvertTo-HashTable
