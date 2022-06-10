@@ -42,8 +42,9 @@ try {
         $allVolumes = "{$(((docker volume ls --format "'{{.Name}}': '{{.Mountpoint}}'") -join ",").Replace('\','\\').Replace("'",'"'))}" | ConvertFrom-Json | ConvertTo-HashTable
         $baseFolder = Join-Path $allVolumes.hostHelperFolder $containerName
         if (Test-Path $baseFolder) {
-            Remove-Item $baseFolder -Recurse -Force
+            Remove-Item -Path $baseFolder -Recurse -Force
         }
+        New-Item Path $baseFolder -ItemType Directory | Out-Null
         Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $baseFolder -Recurse -Force
         $baseFolder = Join-Path $baseFolder (Get-Item -Path $ENV:GITHUB_WORKSPACE).BaseName
         Write-Host $ENV:GITHUB_WORKSPACE
