@@ -49,9 +49,6 @@ try {
         $correlationId = [guid]::Empty.ToString()
     }
 
-    # TEMP FIX
-    Flush-ContainerHelperCache -keepdays 0
-
     Write-Host "::set-output name=telemetryScopeJson::$scopeJson"
     Write-Host "set-output name=telemetryScopeJson::$scopeJson"
 
