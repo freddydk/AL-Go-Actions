@@ -40,10 +40,8 @@ try {
     $baseFolder = $ENV:GITHUB_WORKSPACE
     if ($bcContainerHelperConfig.useVolumes -and $bcContainerHelperConfig.hostHelperFolder -eq "HostHelperFolder") {
         $allVolumes = "{$(((docker volume ls --format "'{{.Name}}': '{{.Mountpoint}}'") -join ",").Replace('\','\\').Replace("'",'"'))}" | ConvertFrom-Json | ConvertTo-HashTable
-        $pipelineFolder = Join-Path $allVolumes.hostHelperFolder $containerName
-        New-Item -Path $pipelineFolder -ItemType Directory | Out-Null
-        Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $pipelineFolder -Recurse -Force
-        $baseFolder = Join-Path $pipelineFolder (get-item $ENV:GITHUB_WORKSPACE).BaseName
+        $baseFolder = Join-Path $allVolumes.hostHelperFolder $containerName
+        Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $baseFolder -Recurse -Force
     }
 
     $projectPath = Join-Path $baseFolder $project
