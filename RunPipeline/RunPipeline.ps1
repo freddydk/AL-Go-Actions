@@ -48,9 +48,6 @@ try {
         New-Item -Path $baseFolder -ItemType Directory | Out-Null
         Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $baseFolder -Recurse -Force
         $baseFolder = Join-Path $baseFolder (Get-Item -Path $ENV:GITHUB_WORKSPACE).BaseName
-        Write-Host $ENV:GITHUB_WORKSPACE
-        Write-Host $baseFolder
-        Get-ChildItem $baseFolder -Recurse | Out-Host
     }
 
     $projectPath = Join-Path $baseFolder $project
