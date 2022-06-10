@@ -39,6 +39,7 @@ try {
     if ($project  -eq ".") { $project = "" }
     $baseFolder = $ENV:GITHUB_WORKSPACE
     if ($bcContainerHelperConfig.useVolumes -and $bcContainerHelperConfig.hostHelperFolder -eq "HostHelperFolder") {
+        $bcContainerHelperConfig.usePsSession = $false
         $allVolumes = "{$(((docker volume ls --format "'{{.Name}}': '{{.Mountpoint}}'") -join ",").Replace('\','\\').Replace("'",'"'))}" | ConvertFrom-Json | ConvertTo-HashTable
         $baseFolder = Join-Path $allVolumes.hostHelperFolder $containerName
         if (Test-Path $baseFolder) {
