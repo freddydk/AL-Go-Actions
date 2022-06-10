@@ -41,6 +41,9 @@ try {
     if ($bcContainerHelperConfig.useVolumes -and $bcContainerHelperConfig.hostHelperFolder -eq "HostHelperFolder") {
         $allVolumes = "{$(((docker volume ls --format "'{{.Name}}': '{{.Mountpoint}}'") -join ",").Replace('\','\\').Replace("'",'"'))}" | ConvertFrom-Json | ConvertTo-HashTable
         $baseFolder = Join-Path $allVolumes.hostHelperFolder $containerName
+        if (Test-Path $baseFolder) {
+            Remove-Item $baseFolder -Recurse -Force
+        }
         Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $baseFolder -Recurse -Force
         $baseFolder = Join-Path $baseFolder (Get-Item -Path $ENV:GITHUB_WORKSPACE).BaseName
         Write-Host $ENV:GITHUB_WORKSPACE
