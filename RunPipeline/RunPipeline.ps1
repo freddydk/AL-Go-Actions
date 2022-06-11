@@ -340,7 +340,7 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-    if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
-        Remove-Item -Path $containerBaseFolder -Recurse -Force
-    }
+    #if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
+        #Remove-Item -Path $containerBaseFolder -Recurse -Force
+    #}
 }
