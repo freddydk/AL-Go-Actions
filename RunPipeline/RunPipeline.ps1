@@ -300,8 +300,7 @@ try {
         -CreateRuntimePackages:$CreateRuntimePackages `
         -appBuild $appBuild -appRevision $appRevision `
         -uninstallRemovedApps `
-        -RemoveBcContainer { Param([Hashtable]$parameters) #Remove-BcContainerSession -containerName $parameters.ContainerName -killPsSessionProcess; Remove-BcContainer @parameters 
-        }
+        -RemoveBcContainer { Param([Hashtable]$parameters) Remove-BcContainerSession -containerName $parameters.ContainerName -killPsSessionProcess; Remove-BcContainer @parameters }
 
     if ($storageContext) {
         Write-Host "Publishing to $storageContainerName in $($storageAccount.StorageAccountName)"
