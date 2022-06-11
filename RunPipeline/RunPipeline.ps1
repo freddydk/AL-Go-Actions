@@ -46,7 +46,7 @@ try {
             Remove-Item -Path $containerBaseFolder -Recurse -Force
         }
         New-Item -Path $containerBaseFolder -ItemType Directory | Out-Null
-        Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $baseFolder -Recurse -Force
+        Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $containerBaseFolder -Recurse -Force
         $baseFolder = Join-Path $containerBaseFolder (Get-Item -Path $ENV:GITHUB_WORKSPACE).BaseName
     }
 
