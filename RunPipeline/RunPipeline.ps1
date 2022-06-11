@@ -329,7 +329,9 @@ try {
 
     if ($containerBaseFolder) {
         $destFolder = Join-Path $ENV:GITHUB_WORKSPACE $project
-        Copy-Item -Path (Join-Path $projectPath ".output") -Destination $destFolder
+        Write-Host $destFolder
+        Copy-Item -Path (Join-Path $projectPath ".output") -Destination $destFolder -Recurse -Force
+        Get-ChildItem $destFolder -Recurse
     }
 
     TrackTrace -telemetryScope $telemetryScope
