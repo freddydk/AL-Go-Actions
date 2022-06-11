@@ -17,6 +17,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 $telemetryScope = $null
 $bcContainerHelperPath = $null
+$containerBaseFolder = $null
 
 # IMPORTANT: No code that can fail should be outside the try/catch
 
@@ -39,15 +40,14 @@ try {
     if ($project  -eq ".") { $project = "" }
     $baseFolder = $ENV:GITHUB_WORKSPACE
     if ($bcContainerHelperConfig.useVolumes -and $bcContainerHelperConfig.hostHelperFolder -eq "HostHelperFolder") {
-        $bcContainerHelperConfig.usePsSession = $false
         $allVolumes = "{$(((docker volume ls --format "'{{.Name}}': '{{.Mountpoint}}'") -join ",").Replace('\','\\').Replace("'",'"'))}" | ConvertFrom-Json | ConvertTo-HashTable
-        $baseFolder = Join-Path $allVolumes.hostHelperFolder $containerName
-        if (Test-Path $baseFolder) {
-            Remove-Item -Path $baseFolder -Recurse -Force
+        $containerBaseFolder = Join-Path $allVolumes.hostHelperFolder $containerName
+        if (Test-Path $containerBaseFolder) {
+            Remove-Item -Path $containerBaseFolder -Recurse -Force
         }
-        New-Item -Path $baseFolder -ItemType Directory | Out-Null
+        New-Item -Path $containerBaseFolder -ItemType Directory | Out-Null
         Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $baseFolder -Recurse -Force
-        $baseFolder = Join-Path $baseFolder (Get-Item -Path $ENV:GITHUB_WORKSPACE).BaseName
+        $baseFolder = Join-Path $containerBaseFolder (Get-Item -Path $ENV:GITHUB_WORKSPACE).BaseName
     }
 
     $projectPath = Join-Path $baseFolder $project
@@ -327,6 +327,11 @@ try {
         }
     }
 
+    if ($containerBaseFolder) {
+        $destFolder = Join-Path $ENV:GITHUB_WORKSPACE $project
+        Move-Item -Path (Join-Path $projectPath ".output") -Destination $destFolder
+    }
+
     TrackTrace -telemetryScope $telemetryScope
 }
 catch {
@@ -335,4 +340,7 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
+    if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
+        Remove-Item -Path $containerBaseFolder -Recurse -Force
+    }
 }
