@@ -346,13 +346,7 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-#    if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
-#        try {
-#            Remove-Item -Path $containerBaseFolder -Recurse -Force
-#        }
-#        catch {
-#            start-sleep -seconds 60
-#            Remove-Item -Path $containerBaseFolder -Recurse -Force
-#        }
-#    }
+    if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
+        Remove-Item -Path "$containerBaseFolder\*" -Recurse -Force
+    }
 }
