@@ -329,16 +329,13 @@ try {
 
     if ($containerBaseFolder) {
 
-        Get-ChildItem $projectPath -Recurse
-
+        Write-Host "Copy artifacts and build output back from build container"
         $destFolder = Join-Path $ENV:GITHUB_WORKSPACE $project
-        Write-Host $destFolder
         Copy-Item -Path (Join-Path $projectPath "output") -Destination $destFolder -Recurse -Force
         Copy-Item -Path (Join-Path $projectPath ".output") -Destination $destFolder -Recurse -Force
         Copy-Item -Path (Join-Path $projectPath "testResults*.xml") -Destination $destFolder
         Copy-Item -Path (Join-Path $projectPath "bcptTestResults*.json") -Destination $destFolder
         Copy-Item -Path (Join-Path $projectPath "buildoutput.txt") -Destination $destFolder
-        Get-ChildItem $destFolder -Recurse
     }
 
     TrackTrace -telemetryScope $telemetryScope
@@ -349,7 +346,13 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-    #if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
-        #Remove-Item -Path $containerBaseFolder -Recurse -Force
-    #}
+    if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
+        try {
+            Remove-Item -Path $containerBaseFolder -Recurse -Force
+        }
+        catch {
+            start-sleep -seconds 60
+            Remove-Item -Path $containerBaseFolder -Recurse -Force
+        }
+    }
 }
