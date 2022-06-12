@@ -41,7 +41,7 @@ try {
     $baseFolder = $ENV:GITHUB_WORKSPACE
     if ($bcContainerHelperConfig.useVolumes -and $bcContainerHelperConfig.hostHelperFolder -eq "HostHelperFolder") {
         $allVolumes = "{$(((docker volume ls --format "'{{.Name}}': '{{.Mountpoint}}'") -join ",").Replace('\','\\').Replace("'",'"'))}" | ConvertFrom-Json | ConvertTo-HashTable
-        $containerBaseFolder = Join-Path $allVolumes.hostHelperFolder "Extensions\$containerName\src"
+        $containerBaseFolder = Join-Path $allVolumes.hostHelperFolder $containerName
         if (Test-Path $containerBaseFolder) {
             Remove-Item -Path $containerBaseFolder -Recurse -Force
         }
