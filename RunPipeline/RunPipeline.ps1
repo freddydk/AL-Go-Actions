@@ -18,6 +18,7 @@ Set-StrictMode -Version 2.0
 $telemetryScope = $null
 $bcContainerHelperPath = $null
 $containerBaseFolder = $null
+$projectPath = $null
 
 # IMPORTANT: No code that can fail should be outside the try/catch
 
@@ -346,7 +347,7 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-    if ($containerBaseFolder -and (Test-Path $containerBaseFolder)) {
-        Remove-Item -Path "$containerBaseFolder\*" -Recurse -Force
+    if ($projectPath -and (Test-Path $projectPath)) {
+        Remove-Item -Path "$projectPath\*" - -Recurse -Force
     }
 }
