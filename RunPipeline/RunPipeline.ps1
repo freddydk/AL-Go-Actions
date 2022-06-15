@@ -348,7 +348,7 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-    if ($projectPath -and (Test-Path "$projectPath")) {
+    if ($containerBaseFolder -and (Test-Path $containerBaseFolder) -and $projectPath -and (Test-Path $projectPath)) {
         Write-Host "Removing temp folder"
         Remove-Item -Path (Join-Path $projectPath '*') -Recurse -Force
         Write-Host "Done"
