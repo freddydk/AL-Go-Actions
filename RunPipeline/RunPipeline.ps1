@@ -347,7 +347,10 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-    if ($projectPath -and (Test-Path $projectPath)) {
-        Remove-Item -Path "$projectPath\*" - -Recurse -Force
+    Write-Host $projectPath
+    if ($projectPath -and (Test-Path "$projectPath")) {
+        Write-Host "Trying to remove"
+        Remove-Item -Path "$projectPath\*" - -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "removed"
     }
 }
