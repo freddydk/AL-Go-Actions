@@ -350,7 +350,11 @@ finally {
     Write-Host $projectPath
     if ($projectPath -and (Test-Path "$projectPath")) {
         Write-Host "Trying to remove"
-        Remove-Item -Path "$projectPath\*" - -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path (Join-Path $projectPath '*') -Recurse -Force
+        Write-Host "removed"
+        Remove-Item -Path $projectPath.Trim('\') -Recurse -Force
+        Write-Host "removed"
+        Remove-Item -Path $containerBaseFolder -Recurse -Force
         Write-Host "removed"
     }
 }
