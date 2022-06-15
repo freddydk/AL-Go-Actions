@@ -352,9 +352,7 @@ finally {
         Write-Host "Trying to remove"
         Remove-Item -Path (Join-Path $projectPath '*') -Recurse -Force
         Write-Host "removed"
-        Remove-Item -Path $projectPath.Trim('\') -Recurse -Force
-        Write-Host "removed"
-        Remove-Item -Path $containerBaseFolder -Recurse -Force
-        Write-Host "removed"
+        Start-Sleep -seconds 600
+        Write-Host "continuing"
     }
 }
