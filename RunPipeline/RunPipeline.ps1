@@ -46,6 +46,7 @@ try {
         if (Test-Path $containerBaseFolder) {
             Remove-Item -Path $containerBaseFolder -Recurse -Force
         }
+        Write-Host "Creating temp folder"
         New-Item -Path $containerBaseFolder -ItemType Directory | Out-Null
         Copy-Item -Path $ENV:GITHUB_WORKSPACE -Destination $containerBaseFolder -Recurse -Force
         $baseFolder = Join-Path $containerBaseFolder (Get-Item -Path $ENV:GITHUB_WORKSPACE).BaseName
@@ -347,12 +348,9 @@ catch {
 }
 finally {
     CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-    Write-Host $projectPath
     if ($projectPath -and (Test-Path "$projectPath")) {
-        Write-Host "Trying to remove"
+        Write-Host "Removing temp folder"
         Remove-Item -Path (Join-Path $projectPath '*') -Recurse -Force
-        Write-Host "removed"
-        Start-Sleep -seconds 600
-        Write-Host "continuing"
+        Write-Host "Done"
     }
 }
