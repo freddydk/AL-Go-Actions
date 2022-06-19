@@ -1270,6 +1270,19 @@ function CreateDevEnv {
             }
         }
         else {
+            if ($settings.ContainsKey('appDependencyProbingPaths')) {
+                $settings.appDependencyProbingPaths | ForEach-Object {
+                    if ($_.PsObject.Properties.name -eq "AuthTokenSecret") {
+                        $secretName = $_.authTokenSecret
+                        $_.authTokenSecret = ""
+                        if ($settings.keyVaultName) {
+                            $secret = Get-AzKeyVaultSecret -VaultName $settings.keyVaultName -Name $secretName
+                            if ($secret) { $_.authTokenSecret = $secret.SecretValue | Get-PlainText }
+                        }
+                    } 
+                }
+            }
+
             if (($settings.keyVaultName) -and -not ($bcAuthContext)) {
                 Write-Host "Reading Key Vault $($settings.keyVaultName)"
                 installModules -modules @('Az.KeyVault')
@@ -1281,6 +1294,7 @@ function CreateDevEnv {
                     $insiderSasTokenSecret = Get-AzKeyVaultSecret -VaultName $settings.keyVaultName -Name $settings.InsiderSasTokenSecretName
                     if ($insiderSasTokenSecret) { $insiderSasToken = $insiderSasTokenSecret.SecretValue | Get-PlainText }
 
+                    #FREDDY
                     # do not add codesign cert.
 
                     if ($settings.applicationInsightsConnectionStringSecretName) {
