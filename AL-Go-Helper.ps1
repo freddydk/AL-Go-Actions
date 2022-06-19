@@ -1270,17 +1270,11 @@ function CreateDevEnv {
             }
         }
         else {
-            $settings | Out-host
-            $settings.GetType() | Out-Host
-            Write-Host "CHECK appDependencyProbingPaths"
-            if ($settings.PsObject.Properties.Name -eq "appDependencyProbingPaths") {
-                Write-Host "appDependencyProbingPaths exists"
+            if ($settings.Contains("appDependencyProbingPaths")) {
                 $settings.appDependencyProbingPaths | ForEach-Object {
-                    Write-Host "REPO: $_.Repo"
-                    if ($_.PsObject.Properties.name -eq "AuthTokenSecret") {
+                    if ($_.Contains("AuthTokenSecret")) {
                         $secretName = $_.authTokenSecret
-                        Write-Host "SECRET $secretName"
-                        $_.authTokenSecret = ""
+                        $_.Remove('authTokenSecret')
                         if ($settings.keyVaultName) {
                             $secret = Get-AzKeyVaultSecret -VaultName $settings.keyVaultName -Name $secretName
                             if ($secret) { $_.authTokenSecret = $secret.SecretValue | Get-PlainText }
