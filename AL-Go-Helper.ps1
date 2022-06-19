@@ -1270,7 +1270,7 @@ function CreateDevEnv {
             }
         }
         else {
-            if ($settings.ContainsKey('appDependencyProbingPaths')) {
+            if ($settings.PSObject.Properties.Name -eq 'appDependencyProbingPaths') {
                 $settings.appDependencyProbingPaths | ForEach-Object {
                     if ($_.PsObject.Properties.name -eq "AuthTokenSecret") {
                         $secretName = $_.authTokenSecret
