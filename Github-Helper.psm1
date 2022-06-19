@@ -432,8 +432,6 @@ function GetArtifacts {
     do {
         $uri = "$api_url/repos/$repository/actions/artifacts?per_page=$($per_page)&page=$($page)"
         Write-Host $uri
-        $headers | Out-Host
-        
         $artifacts = InvokeWebRequest -UseBasicParsing -Headers $headers -Uri $uri | ConvertFrom-Json
         $page++
         $allArtifacts += @($artifacts.artifacts | Where-Object { $_.name -like "*-$branch-$mask-$version" })
