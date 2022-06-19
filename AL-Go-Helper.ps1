@@ -1299,7 +1299,6 @@ function CreateDevEnv {
                     $insiderSasTokenSecret = Get-AzKeyVaultSecret -VaultName $settings.keyVaultName -Name $settings.InsiderSasTokenSecretName
                     if ($insiderSasTokenSecret) { $insiderSasToken = $insiderSasTokenSecret.SecretValue | Get-PlainText }
 
-                    #FREDDY
                     # do not add codesign cert.
 
                     if ($settings.applicationInsightsConnectionStringSecretName) {
