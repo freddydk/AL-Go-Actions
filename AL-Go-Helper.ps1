@@ -1270,10 +1270,13 @@ function CreateDevEnv {
             }
         }
         else {
+            $settings | Out-host
             if ($settings.PSObject.Properties.Name -eq 'appDependencyProbingPaths') {
                 $settings.appDependencyProbingPaths | ForEach-Object {
+                    Write-Host $_.Repository
                     if ($_.PsObject.Properties.name -eq "AuthTokenSecret") {
                         $secretName = $_.authTokenSecret
+                        Write-Host $secretName
                         $_.authTokenSecret = ""
                         if ($settings.keyVaultName) {
                             $secret = Get-AzKeyVaultSecret -VaultName $settings.keyVaultName -Name $secretName
