@@ -1279,6 +1279,11 @@ function CreateDevEnv {
                             $secret = Get-AzKeyVaultSecret -VaultName $settings.keyVaultName -Name $secretName
                             if ($secret) { $_.authTokenSecret = $secret.SecretValue | Get-PlainText }
                         }
+                        else {
+                            Write-Host "Attempting to retrieve an auth token using gh auth status"
+                            $authstatus = (invoke-gh -silent -returnValue auth status --show-token) -join " "
+                            $_.authTokenSecret = $authStatus.SubString($authstatus.IndexOf('Token: ')+7).Trim()
+                        }
                     } 
                 }
             }
