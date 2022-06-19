@@ -825,6 +825,9 @@ function AnalyzeRepo {
             if (-not ($dependency.PsObject.Properties.name -eq "Version")) {
                 $dependency | Add-Member -name "Version" -MemberType NoteProperty -Value "latest"
             }
+            if (-not ($dependency.PsObject.Properties.name -eq "Projects")) {
+                $dependency | Add-Member -name "Projects" -MemberType NoteProperty -Value "*"
+            }
             elseif ([String]::IsNullOrEmpty($dependency.Projects)) {
                 $dependency.Projects = '*'
             }
