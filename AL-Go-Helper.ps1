@@ -1271,6 +1271,7 @@ function CreateDevEnv {
         }
         else {
             $settings | Out-host
+            Write-Host "CHECK appDependencyProbingPaths"
             if ($settings.PSObject.Properties.Name -eq "appDependencyProbingPaths") {
                 Write-Host "appDependencyProbingPaths exists"
                 $settings.appDependencyProbingPaths | ForEach-Object {
