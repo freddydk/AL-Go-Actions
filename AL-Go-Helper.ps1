@@ -1289,7 +1289,8 @@ function CreateDevEnv {
                                     $retry = $false
                                 }
                                 catch {
-                                    Write-Host -ForegroundColor Red "Error trying to get github token. Error was $($_.Exception.Message)"
+                                    Write-Host -ForegroundColor Red "Error trying to retrieve GitHub token."
+                                    Write-Host -ForegroundColor Red $_.Exception.Message
                                     Read-Host "Press ENTER to retry operation (or Ctrl+C to cancel)"
                                 }
                             }
