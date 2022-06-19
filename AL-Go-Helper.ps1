@@ -839,7 +839,12 @@ function AnalyzeRepo {
             }
             Write-Host "Dependency to projects '$($dependency.Projects)' in $($dependency.Repo)@$($dependency.branch), version $($dependency.version), release status $($dependency.release_status)"
             if (-not ($dependency.PsObject.Properties.name -eq "AuthTokenSecret")) {
-                Write-Host "Using token as AuthTokenSecret"
+                if ($token) {
+                    Write-Host "Using token as AuthTokenSecret"
+                }
+                else {
+                    Write-Host "No token available, will attempt to invoke gh auth status --show-token to get access to repository"
+                }
                 $dependency | Add-Member -name "AuthTokenSecret" -MemberType NoteProperty -Value $token
             }
             if (-not ($dependency.PsObject.Properties.name -eq "alwaysIncludeApps")) {
