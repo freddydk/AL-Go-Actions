@@ -19,12 +19,12 @@ function MaskValueInLog {
     $val2 = ""
     $value.ToCharArray() | ForEach-Object {
         $chint = [int]$_
-        if ($chint -lt 32 -or $chint -gt 126 ) {
-            throw "Secret $key contains characters, which are not supported in secrets in AL-Go for GitHub. This exception is thrown to avoid that the secret is revealed in the log."
-        }
-        else {
-            $val2 += $script:escchars[$chint-32]
-        }
+#        if ($chint -lt 32 -or $chint -gt 126 ) {
+#            throw "Secret $key contains characters, which are not supported in secrets in AL-Go for GitHub. This exception is thrown to avoid that the secret is revealed in the log."
+#        }
+#        else {
+        $val2 += $script:escchars[$chint-32]
+#        }
     }
 
     Write-Host "::add-mask::$val2"
@@ -44,6 +44,11 @@ function GetGithubSecret {
     if ($script:gitHubSecrets.PSObject.Properties.Name -eq $secret) {
         $value = $script:githubSecrets."$secret"
         if ($value) {
+
+            $bytes = New-Object Byte[] ($value.length)
+            for($i=0; $i -lt $value.length; $i++) { $bytes[$i] = [byte]($value[$i]) }
+            $value = [System.Text.Encoding]::UTF8.GetString($bytes)
+
             MaskValueInLog -key $secret -value $value
             Add-Content -Path $env:GITHUB_ENV -Value "$envVar=$value"
             return $value
