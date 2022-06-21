@@ -23,8 +23,6 @@ $bcContainerHelperPath = $null
 # IMPORTANT: No code that can fail should be outside the try/catch
 
 try {
-    $adminCenterApiCredentials = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($adminCenterApiCredentials))
-    
     . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
     $branch = "$(if (!$directCommit) { [System.IO.Path]::GetRandomFileName() })"
     $serverUrl = CloneIntoNewFolder -actor $actor -token $token -branch $branch
@@ -33,6 +31,8 @@ try {
 
     import-module (Join-Path -path $PSScriptRoot -ChildPath "..\TelemetryHelper.psm1" -Resolve)
     $telemetryScope = CreateScope -eventId 'DO0073' -parentTelemetryScopeJson $parentTelemetryScopeJson
+
+    $adminCenterApiCredentials = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($adminCenterApiCredentials))
 
     Write-Host "Reading $ALGoSettingsFile"
     $settingsJson = Get-Content $ALGoSettingsFile -Encoding UTF8 | ConvertFrom-Json
