@@ -69,7 +69,8 @@ try {
             $value = GetSecret -secret $secret -keyVaultName $keyVaultName
             if ($value) {
                 Add-Content -Path $env:GITHUB_ENV -Value "$envVar=$value"
-                $outSecrets += @{ "$envVar" = $value }
+                $Bytes = [System.Text.Encoding]::UTF8.GetBytes($value)
+                $outSecrets += @{ "$envVar" = $([Convert]::ToBase64String($Bytes)) }
                 Write-Host "$envVar successfully read from secret $secret"
                 $secretsCollection.Remove($_)
             }
