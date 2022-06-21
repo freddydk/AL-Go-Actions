@@ -1,4 +1,4 @@
-﻿$script:gitHubSecrets = $env:Secrets | ConvertFrom-Json
+$script:gitHubSecrets = $env:Secrets | ConvertFrom-Json
 
 $script:gitHubSecrets.InsiderSasToken.length | Out-Host
 Write-Host $script:gitHubSecrets.InsiderSasToken.substring(1)
