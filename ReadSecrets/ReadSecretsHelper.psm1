@@ -1,8 +1,4 @@
 $script:gitHubSecrets = $env:Secrets | ConvertFrom-Json
-
-$script:gitHubSecrets.InsiderSasToken.length | Out-Host
-Write-Host $script:gitHubSecrets.InsiderSasToken.substring(1)
-
 $script:keyvaultConnectionExists = $false
 $script:azureRm210 = $false
 $script:isKeyvaultSet = $script:gitHubSecrets.PSObject.Properties.Name -eq "AZURE_CREDENTIALS"
@@ -48,16 +44,9 @@ function GetGithubSecret {
         $secret = $secretSplit[1]
     }
     
-    $script:gitHubSecrets.InsiderSasToken.length | Out-Host
-    Write-Host $script:gitHubSecrets.InsiderSasToken.substring(1)
-    
     if ($script:gitHubSecrets.PSObject.Properties.Name -eq $secret) {
         $value = $script:githubSecrets."$secret"
         if ($value) {
-
-            $value.length | Out-Host
-            Write-Host $value.substring(1)
-
             MaskValueInLog -key $secret -value $value
             Add-Content -Path $env:GITHUB_ENV -Value "$envVar=$value"
             return $value
