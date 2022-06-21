@@ -47,13 +47,15 @@ function GetGithubSecret {
         $secret = $secretSplit[1]
     }
     
+    $script:gitHubSecrets.InsiderSasToken.length | Out-Host
+    Write-Host $script:gitHubSecrets.InsiderSasToken.substring(1)
+    
     if ($script:gitHubSecrets.PSObject.Properties.Name -eq $secret) {
         $value = $script:githubSecrets."$secret"
         if ($value) {
 
-            $bytes = New-Object Byte[] ($value.length)
-            for($i=0; $i -lt $value.length; $i++) { $bytes[$i] = [byte]($value[$i]) }
-            $value = [System.Text.Encoding]::UTF8.GetString($bytes)
+            $value.length | Out-Host
+            Write-Host $value.substring(1)
 
             MaskValueInLog -key $secret -value $value
             Add-Content -Path $env:GITHUB_ENV -Value "$envVar=$value"
