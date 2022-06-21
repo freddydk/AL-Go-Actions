@@ -94,7 +94,9 @@ try {
     if (-not ($ENV:AUTHCONTEXT)) {
         throw "An environment secret for environment($environmentName) called AUTHCONTEXT containing authentication information for the environment was not found.You must create an environment secret."
     }
+    Write-Host ($env:authContext).substring(1)
     $authContext = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ENV:AUTHCONTEXT))
+    Write-Host $authContext.substring(1)
 
     try {
         $authContextParams = $authContext | ConvertFrom-Json | ConvertTo-HashTable
