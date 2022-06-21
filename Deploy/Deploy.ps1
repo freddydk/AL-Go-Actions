@@ -24,6 +24,8 @@ $bcContainerHelperPath = $null
 # IMPORTANT: No code that can fail should be outside the try/catch
 
 try {
+    $EnvironmentName = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($environmentName))
+
     . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
     $BcContainerHelperPath = DownloadAndImportBcContainerHelper -baseFolder $ENV:GITHUB_WORKSPACE
 
@@ -92,9 +94,10 @@ try {
     if (-not ($ENV:AUTHCONTEXT)) {
         throw "An environment secret for environment($environmentName) called AUTHCONTEXT containing authentication information for the environment was not found.You must create an environment secret."
     }
+    $authContext = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ENV:AUTHCONTEXT))
 
     try {
-        $authContextParams = $ENV:AUTHCONTEXT | ConvertFrom-Json | ConvertTo-HashTable
+        $authContextParams = $authContext | ConvertFrom-Json | ConvertTo-HashTable
         $bcAuthContext = New-BcAuthContext @authContextParams
     } catch {
         throw "Authentication failed. $([environment]::Newline) $($_.exception.message)"
