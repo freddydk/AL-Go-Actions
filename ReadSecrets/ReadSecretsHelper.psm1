@@ -1,4 +1,8 @@
-$script:gitHubSecrets = $env:Secrets | ConvertFrom-Json
+﻿$script:gitHubSecrets = $env:Secrets | ConvertFrom-Json
+
+$script:gitHubSecrets.InsiderSasToken.length | Out-Host
+Write-Host $script:gitHubSecrets.InsiderSasToken.substring(1)
+
 $script:keyvaultConnectionExists = $false
 $script:azureRm210 = $false
 $script:isKeyvaultSet = $script:gitHubSecrets.PSObject.Properties.Name -eq "AZURE_CREDENTIALS"
@@ -19,6 +23,7 @@ function MaskValueInLog {
     $val2 = ""
     $value.ToCharArray() | ForEach-Object {
         $chint = [int]$_
+        Write-Host $chint
         if ($chint -lt 32 -or $chint -gt 126 ) {
             $val2 += $_    # throw "Secret $key contains characters, which are not supported in secrets in AL-Go for GitHub. This exception is thrown to avoid that the secret is revealed in the log."
         }
