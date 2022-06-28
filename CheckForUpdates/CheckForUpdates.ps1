@@ -175,7 +175,9 @@ try {
                 else {
                     $CICDPullRequestBranches = $defaultCICDPullRequestBranches
                 }
-                $replacePattern += "  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ '$($CICDPullRequestBranches -join ''', ''')' ]`r`n"
+                if ($CICDPullRequestBranches) {
+                    $replacePattern += "  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ '$($CICDPullRequestBranches -join ''', ''')' ]`r`n"
+                }
                 $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
             }
             
