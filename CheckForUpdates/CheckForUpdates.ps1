@@ -150,6 +150,15 @@ try {
                 $replacePattern = "on:`r`n  schedule:`r`n  - cron: '$($repoSettings."$workflowScheduleKey")'`r`n  workflow_dispatch:`r`n"
                 $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
             }
+
+            if ($baseName -eq "CICD") {
+                $srcPattern = "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($defaultCICDPushBranches -join ', ') ]`r`n  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n"
+                $replacePattern = "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($repoSettings.defaultCICDPushBranches -join ', ') ]`r`n  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n"
+                if ($repoSettings.ContainsKey($workflowScheduleKey)) {
+                    $replacePattern = ''
+                }
+                $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
+            }
             
             if ($baseName -ne "UpdateGitHubGoSystemFiles") {
                 if ($repoSettings.ContainsKey("runs-on")) {
