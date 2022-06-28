@@ -164,7 +164,7 @@ try {
                     $CICDPushBranches = $defaultCICDPushBranches
                 }
                 if ($CICDPushBranches) {
-                    $replacePattern += "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($CICDPushBranches -join ', ') ]`r`n"
+                    $replacePattern += "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ '$($CICDPushBranches -join ''', ''')' ]`r`n"
                 }
                 if ($repoSettings.ContainsKey('CICDPullRequestBranches')) {
                     $CICDPullRequestBranches = $repoSettings.CICDPullRequestBranches
@@ -175,7 +175,7 @@ try {
                 else {
                     $CICDPullRequestBranches = $defaultCICDPullRequestBranches
                 }
-                $replacePattern += "  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($CICDPullRequestBranches -join ', ') ]`r`n"
+                $replacePattern += "  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ '$($CICDPullRequestBranches -join ''', ''')' ]`r`n"
                 $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
             }
             
