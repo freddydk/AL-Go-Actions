@@ -166,11 +166,12 @@ try {
                 if ($CICDPushBranches) {
                     $replacePattern += "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($CICDPushBranches -join ', ') ]`r`n"
                 }
-                if ($repoSettings.ContainsKey('CICDPullRequestBranches'))
+                if ($repoSettings.ContainsKey('CICDPullRequestBranches')) {
                     $CICDPullRequestBranches = $repoSettings.CICDPullRequestBranches
                 }
                 elseif ($repoSettings.ContainsKey($workflowScheduleKey)) {
                     $CICDPullRequestBranches = ''
+                }
                 else {
                     $CICDPullRequestBranches = $defaultCICDPullRequestBranches
                 }
