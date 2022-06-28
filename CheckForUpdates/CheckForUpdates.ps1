@@ -154,7 +154,7 @@ try {
             if ($baseName -eq "CICD") {
                 $srcPattern = "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($defaultCICDPushBranches -join ', ') ]`r`n  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($defaultCICDPushBranches -join ', ') ]`r`n"
                 $replacePattern = ''
-                if ($repoSettings.ContainsKey('CICDPushBranches'))
+                if ($repoSettings.ContainsKey('CICDPushBranches')) {
                     $CICDPushBranches = $repoSettings.CICDPushBranches
                 }
                 elseif ($repoSettings.ContainsKey($workflowScheduleKey)) {
