@@ -14,7 +14,7 @@ $ALGoFolder = ".AL-Go\"
 $ALGoSettingsFile = ".AL-Go\settings.json"
 $RepoSettingsFile = ".github\AL-Go-Settings.json"
 $defaultCICDPushBranches = @( 'main', 'release/*', 'feature/*' )
-$defaultCICDPullRequestBranches = @( '*' )
+$defaultCICDPullRequestBranches = @( 'main' )
 $runningLocal = $local.IsPresent
 
 $runAlPipelineOverrides = @(
