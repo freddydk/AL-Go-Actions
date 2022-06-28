@@ -14,6 +14,7 @@ $ALGoFolder = ".AL-Go\"
 $ALGoSettingsFile = ".AL-Go\settings.json"
 $RepoSettingsFile = ".github\AL-Go-Settings.json"
 $defaultCICDPushBranches = @( 'main', 'release/*', 'feature/*' )
+$defaultCICDPullRequestBranches = @( '*' )
 $runningLocal = $local.IsPresent
 
 $runAlPipelineOverrides = @(
@@ -405,7 +406,6 @@ function ReadSettings {
         "PartnerTelemetryConnectionString"       = ""
         "SendExtendedTelemetryToMicrosoft"       = $false
         "Environments"                           = @()
-        "DefaultCICDPushBranches"                = $defaultCICDPushBranches
     }
     $gitHubFolder = ".github"
     $repoSettingsPath = $RepoSettingsFile

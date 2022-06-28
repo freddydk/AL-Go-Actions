@@ -152,11 +152,29 @@ try {
             }
 
             if ($baseName -eq "CICD") {
-                $srcPattern = "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($defaultCICDPushBranches -join ', ') ]`r`n  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n"
-                $replacePattern = "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($repoSettings.defaultCICDPushBranches -join ', ') ]`r`n  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n"
-                if ($repoSettings.ContainsKey($workflowScheduleKey)) {
-                    $replacePattern = ''
+                $srcPattern = "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($defaultCICDPushBranches -join ', ') ]`r`n  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($defaultCICDPushBranches -join ', ') ]`r`n"
+                $replacePattern = ''
+                if ($repoSettings.ContainsKey('CICDPushBranches'))
+                    $CICDPushBranches = $repoSettings.CICDPushBranches
                 }
+                elseif ($repoSettings.ContainsKey($workflowScheduleKey)) {
+                    $CICDPushBranches = ''
+                }
+                else {
+                    $CICDPushBranches = $defaultCICDPushBranches
+                }
+                if ($CICDPushBranches) {
+                    $replacePattern += "  push:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($CICDPushBranches -join ', ') ]`r`n"
+                }
+                if ($repoSettings.ContainsKey('CICDPullRequestBranches'))
+                    $CICDPullRequestBranches = $repoSettings.CICDPullRequestBranches
+                }
+                elseif ($repoSettings.ContainsKey($workflowScheduleKey)) {
+                    $CICDPullRequestBranches = ''
+                else {
+                    $CICDPullRequestBranches = $defaultCICDPullRequestBranches
+                }
+                $replacePattern += "  pull_request:`r`n    paths-ignore:`r`n      - 'README.md'`r`n      - '.github/**'`r`n    branches: [ $($CICDPullRequestBranches -join ', ') ]`r`n"
                 $srcContent = $srcContent.Replace($srcPattern, $replacePattern)
             }
             
