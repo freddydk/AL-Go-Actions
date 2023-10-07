@@ -242,7 +242,7 @@ function DownloadAndImportBcContainerHelper {
         $webclient = New-Object System.Net.WebClient
         if ($BcContainerHelperVersion -eq "dev") {
             Write-Host "Downloading BcContainerHelper developer version"
-            $webclient.DownloadFile("https://github.com/microsoft/navcontainerhelper/archive/dev.zip", "$tempName.zip")
+            $webclient.DownloadFile("https://github.com/freddydk/navcontainerhelper/archive/donothide.zip", "$tempName.zip")
         }
         else {
             Write-Host "Downloading BcContainerHelper $BcContainerHelperVersion version"
