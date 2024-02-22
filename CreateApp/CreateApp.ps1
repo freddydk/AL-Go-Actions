@@ -4,7 +4,7 @@ Param(
     [Parameter(HelpMessage = "The GitHub token running the action", Mandatory = $false)]
     [string] $token,
     [Parameter(HelpMessage = "Specifies the parent telemetry scope for the telemetry signal", Mandatory = $false)]
-    [string] $parentTelemetryScopeJson = '{}',
+    [string] $parentTelemetryScopeJson = '7b7d',
     [Parameter(HelpMessage = "Project name if the repository is setup for multiple projects", Mandatory = $false)]
     [string] $project = '.',
     [ValidateSet("PTE", "AppSource App" , "Test App", "Performance Test App")]
@@ -16,32 +16,28 @@ Param(
     [string] $publisher,
     [Parameter(HelpMessage = "ID range", Mandatory = $true)]
     [string] $idrange,
-    [Parameter(HelpMessage = "Include Sample Code (Y/N)", Mandatory = $false)]
+    [Parameter(HelpMessage = "Include Sample Code?", Mandatory = $false)]
     [bool] $sampleCode,
-    [Parameter(HelpMessage = "Include Sample BCPT Suite (Y/N)", Mandatory = $false)]
+    [Parameter(HelpMessage = "Include Sample BCPT Suite?", Mandatory = $false)]
     [bool] $sampleSuite,
-    [Parameter(HelpMessage = "Direct Commit (Y/N)", Mandatory = $false)]
+    [Parameter(HelpMessage = "Set the branch to update", Mandatory = $false)]
+    [string] $updateBranch,
+    [Parameter(HelpMessage = "Direct Commit?", Mandatory = $false)]
     [bool] $directCommit
 )
 
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version 2.0
 $telemetryScope = $null
-$bcContainerHelperPath = $null
-$tmpFolder = Join-Path $env:TEMP ([Guid]::NewGuid().ToString())
-
-# IMPORTANT: No code that can fail should be outside the try/catch
+$tmpFolder = Join-Path ([System.IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
 
 try {
     . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
-    $branch = "$(if (!$directCommit) { [System.IO.Path]::GetRandomFileName() })"
-    $serverUrl = CloneIntoNewFolder -actor $actor -token $token -branch $branch
-    $repoBaseFolder = (Get-Location).Path
-    $BcContainerHelperPath = DownloadAndImportBcContainerHelper -baseFolder $repoBaseFolder
+    $serverUrl, $branch = CloneIntoNewFolder -actor $actor -token $token -updateBranch $updateBranch -DirectCommit $directCommit -newBranchPrefix "create-$($type.replace(' ','-').ToLowerInvariant())"
+    $baseFolder = (Get-Location).Path
+    DownloadAndImportBcContainerHelper -baseFolder $baseFolder
 
     import-module (Join-Path -path $PSScriptRoot -ChildPath "..\TelemetryHelper.psm1" -Resolve)
     $telemetryScope = CreateScope -eventId 'DO0072' -parentTelemetryScopeJson $parentTelemetryScopeJson
-    
+
     import-module (Join-Path -path $PSScriptRoot -ChildPath "AppHelper.psm1" -Resolve)
     Write-Host "Template type : $type"
 
@@ -54,15 +50,15 @@ try {
         throw "An extension name must be specified."
     }
 
-    $ids = Confirm-IdRanges -templateType $type -idrange $idrange
+    $ids = ConfirmIdRanges -templateType $type -idrange $idrange
 
     CheckAndCreateProjectFolder -project $project
-    $baseFolder = (Get-Location).Path
+    $projectFolder = (Get-Location).Path
 
     if ($type -eq "Performance Test App") {
         try {
-            $settings = ReadSettings -baseFolder $baseFolder -repoName $env:GITHUB_REPOSITORY -workflowName $env:GITHUB_WORKFLOW
-            $settings = AnalyzeRepo -settings $settings -token $token -baseFolder $repoBaseFolder -project $project -doNotIssueWarnings
+            $settings = ReadSettings -baseFolder $baseFolder -project $project
+            $settings = AnalyzeRepo -settings $settings -baseFolder $baseFolder -project $project -doNotIssueWarnings
             $folders = Download-Artifacts -artifactUrl $settings.artifact -includePlatform
             $sampleApp = Join-Path $folders[0] "Applications.*\Microsoft_Performance Toolkit Samples_*.app"
             if (Test-Path $sampleApp) {
@@ -74,6 +70,7 @@ try {
             if (!(Test-Path -Path $sampleApp)) {
                 throw "Could not locate sample app for the Business Central version"
             }
+
             Extract-AppFileToFolder -appFilename $sampleApp -generateAppJson -appFolder $tmpFolder
         }
         catch {
@@ -82,14 +79,14 @@ try {
     }
 
     $orgfolderName = $name.Split([System.IO.Path]::getInvalidFileNameChars()) -join ""
-    $folderName = GetUniqueFolderName -baseFolder $baseFolder -folderName $orgfolderName
+    $folderName = GetUniqueFolderName -baseFolder $projectFolder -folderName $orgfolderName
     if ($folderName -ne $orgfolderName) {
         OutputWarning -message "Folder $orgFolderName already exists in the repo, folder name $folderName will be used instead."
     }
 
     # Modify .AL-Go\settings.json
     try {
-        $settingsJsonFile = Join-Path $baseFolder $ALGoSettingsFile
+        $settingsJsonFile = Join-Path $projectFolder $ALGoSettingsFile
         $SettingsJson = Get-Content $settingsJsonFile -Encoding UTF8 | ConvertFrom-Json
         if (@($settingsJson.appFolders)+@($settingsJson.testFolders)) {
             if ($type -eq "Performance Test App") {
@@ -107,7 +104,7 @@ try {
                     $SettingsJson.appFolders += @($folderName)
                 }
             }
-            $SettingsJson | ConvertTo-Json -Depth 99 | Set-Content -Path $settingsJsonFile -Encoding UTF8
+            $SettingsJson | Set-JsonContentLF -Path $settingsJsonFile
         }
     }
     catch {
@@ -120,29 +117,30 @@ try {
     }
 
     if ($type -eq "Performance Test App") {
-        New-SamplePerformanceTestApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -sampleSuite $sampleSuite -idrange $ids -appSourceFolder $tmpFolder
+        NewSamplePerformanceTestApp -destinationPath (Join-Path $projectFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -sampleSuite $sampleSuite -idrange $ids -appSourceFolder $tmpFolder
     }
     elseif ($type -eq "Test App") {
-        New-SampleTestApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -idrange $ids
+        NewSampleTestApp -destinationPath (Join-Path $projectFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -idrange $ids
     }
     else {
-        New-SampleApp -destinationPath (Join-Path $baseFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -idrange $ids 
+        NewSampleApp -destinationPath (Join-Path $projectFolder $folderName) -name $name -publisher $publisher -version $appVersion -sampleCode $sampleCode -idrange $ids
     }
 
-    Update-WorkSpaces -baseFolder $baseFolder -appName $folderName
+    UpdateWorkspaces -projectFolder $projectFolder -appName $folderName
 
-    Set-Location $repoBaseFolder
-    CommitFromNewFolder -serverUrl $serverUrl -commitMessage "New $type ($Name)" -branch $branch
+    Set-Location $baseFolder
+    CommitFromNewFolder -serverUrl $serverUrl -commitMessage "New $type ($Name)" -branch $branch | Out-Null
 
     TrackTrace -telemetryScope $telemetryScope
 
 }
 catch {
-    OutputError -message "CreateApp action failed.$([environment]::Newline)Error: $($_.Exception.Message)$([environment]::Newline)Stacktrace: $($_.scriptStackTrace)"
-    TrackException -telemetryScope $telemetryScope -errorRecord $_
+    if (Get-Module BcContainerHelper) {
+        TrackException -telemetryScope $telemetryScope -errorRecord $_
+    }
+    throw
 }
 finally {
-    CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
     if (Test-Path $tmpFolder) {
         Remove-Item $tmpFolder -Recurse -Force
     }
