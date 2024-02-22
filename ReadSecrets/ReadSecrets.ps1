@@ -1,28 +1,15 @@
 Param(
-
-    [Parameter(HelpMessage = "Settings from template repository in compressed Json format", Mandatory = $false)]
-    [string] $settingsJson = '{"keyVaultName": ""}',
-    [Parameter(HelpMessage = "Comma separated list of Secrets to get", Mandatory = $true)]
-    [string] $secrets = "",
-    [Parameter(HelpMessage = "Specifies the parent telemetry scope for the telemetry signal", Mandatory = $false)]
-    [string] $parentTelemetryScopeJson = '{}'
+    [Parameter(HelpMessage = "All GitHub Secrets in compressed JSON format", Mandatory = $true)]
+    [string] $gitHubSecrets = "",
+    [Parameter(HelpMessage = "Comma-separated list of Secrets to get. Secrets preceded by an asterisk are returned encrypted", Mandatory = $true)]
+    [string] $getSecrets = "",
+    [Parameter(HelpMessage = "Determines whether you want to use the GhTokenWorkflow secret for TokenForPush", Mandatory = $false)]
+    [string] $useGhTokenWorkflowForPush = 'false'
 )
 
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version 2.0
-$telemetryScope = $null
-$bcContainerHelperPath = $null
-
-# IMPORTANT: No code that can fail should be outside the try/catch
 $buildMutexName = "AL-Go-ReadSecrets"
 $buildMutex = New-Object System.Threading.Mutex($false, $buildMutexName)
 try {
-    . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
-    $BcContainerHelperPath = DownloadAndImportBcContainerHelper -baseFolder $ENV:GITHUB_WORKSPACE
-
-    import-module (Join-Path -path $PSScriptRoot -ChildPath "..\TelemetryHelper.psm1" -Resolve)
-    $telemetryScope = CreateScope -eventId 'DO0078' -parentTelemetryScopeJson $parentTelemetryScopeJson
-
     try {
         if (!$buildMutex.WaitOne(1000)) {
             Write-Host "Waiting for other process executing ReadSecrets"
@@ -34,84 +21,130 @@ try {
        Write-Host "Other process terminated abnormally"
     }
 
-    Import-Module (Join-Path $PSScriptRoot ".\ReadSecretsHelper.psm1")
+    . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
+    Import-Module (Join-Path $PSScriptRoot ".\ReadSecretsHelper.psm1") -ArgumentList $gitHubSecrets
 
     $outSecrets = [ordered]@{}
-    $settings = $settingsJson | ConvertFrom-Json | ConvertTo-HashTable
-    $outSettings = $settings
-    $keyVaultName = $settings.KeyVaultName
-    if ([string]::IsNullOrEmpty($keyVaultName) -and (IsKeyVaultSet)) {
-        $credentialsJson = Get-KeyVaultCredentials | ConvertTo-HashTable
-        $credentialsJson.Keys | ForEach-Object { MaskValueInLog -value $credentialsJson."$_" }
-        if ($credentialsJson.ContainsKey("KeyVaultName")) {
-            $keyVaultName = $credentialsJson.KeyVaultName
-        }
-    }
+    $settings = $env:Settings | ConvertFrom-Json | ConvertTo-HashTable
+    $keyVaultCredentials = GetKeyVaultCredentials
+    $getAppDependencyProbingPathsSecrets = $false
+    $getTokenForPush = $false
     [System.Collections.ArrayList]$secretsCollection = @()
-    $secrets.Split(',') | ForEach-Object {
-        $secret = $_
-        $secretNameProperty = "$($secret)SecretName"
-        if ($settings.containsKey($secretNameProperty)) {
-            $secret = "$($secret)=$($settings."$secretNameProperty")"
+    foreach($secret in ($getSecrets.Split(',') | Select-Object -Unique)) {
+        if ($secret -eq 'TokenForPush') {
+            $getTokenForPush = $true
+            if ($useGhTokenWorkflowForPush -ne 'true') { continue }
+            # If we are using the ghTokenWorkflow for commits, we need to get ghTokenWorkflow secret
+            $secret = 'ghTokenWorkflow'
         }
-        $secretsCollection += $secret
-    }
-
-    @($secretsCollection) | ForEach-Object {
-        $secretSplit = $_.Split('=')
-        $envVar = $secretSplit[0]
-        $secret = $envVar
-        if ($secretSplit.Count -gt 1) {
-            $secret = $secretSplit[1]
+        $secretNameProperty = "$($secret.TrimStart('*'))SecretName"
+        if ($secret -eq 'AppDependencyProbingPathsSecrets') {
+            $getAppDependencyProbingPathsSecrets = $true
         }
-
-        if ($secret) {
-            $value = GetSecret -secret $secret -keyVaultName $keyVaultName
-            if ($value) {
-                $base64value = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($value))
-                Add-Content -Path $env:GITHUB_ENV -Value "$envVar=$base64value"
-                $outSecrets += @{ "$envVar" = $base64value }
-                Write-Host "$envVar successfully read from secret $secret"
-                $secretsCollection.Remove($_)
+        else {
+            $secretName = $secret
+            if ($settings.Keys -contains $secretNameProperty) {
+                $secretName = $settings."$secretNameProperty"
+            }
+            # Secret is the AL-Go name of the secret
+            # SecretName is the actual name of the secret to get from the KeyVault or GitHub environment
+            if ($secretName) {
+                if ($secretName -ne $secret) {
+                    # Setup mapping between AL-Go secret name and actual secret name
+                    $secret = "$($secret)=$secretName"
+                }
+                if ($secretsCollection -notcontains $secret) {
+                    # Add secret to the collection of secrets to get
+                    $secretsCollection += $secret
+                }
             }
         }
     }
 
-    if ($outSettings.ContainsKey('appDependencyProbingPaths')) {
-        $outSettings.appDependencyProbingPaths | ForEach-Object {
-            if ($_.PsObject.Properties.name -eq "AuthTokenSecret") {
-                $_.authTokenSecret = GetSecret -secret $_.authTokenSecret -keyVaultName $keyVaultName
-            } 
+    # Loop through appDependencyProbingPaths and add secrets to the collection of secrets to get
+    if ($getAppDependencyProbingPathsSecrets -and $settings.Keys -contains 'appDependencyProbingPaths') {
+        foreach($appDependencyProbingPath in $settings.appDependencyProbingPaths) {
+            if ($appDependencyProbingPath.PsObject.Properties.name -eq "AuthTokenSecret") {
+                if ($secretsCollection -notcontains $appDependencyProbingPath.authTokenSecret) {
+                    $secretsCollection += $appDependencyProbingPath.authTokenSecret
+                }
+            }
+        }
+    }
+
+    # Loop through secrets (use @() to allow us to remove items from the collection while looping)
+    foreach($secret in @($secretsCollection)) {
+        $secretSplit = $secret.Split('=')
+        $secretsProperty = $secretSplit[0]
+        # Secret names preceded by an asterisk are returned encrypted (and base64 encoded)
+        $secretsPropertyName = $secretsProperty.TrimStart('*')
+        $encrypted = $secretsProperty.StartsWith('*')
+        $secretName = $secretsPropertyName
+        if ($secretSplit.Count -gt 1) {
+            $secretName = $secretSplit[1]
+        }
+
+        if ($secretName) {
+            $secretValue = GetSecret -secret $secretName -keyVaultCredentials $keyVaultCredentials -encrypted:$encrypted
+            if ($secretValue) {
+                try {
+                    $json = $secretValue | ConvertFrom-Json | ConvertTo-HashTable
+                }
+                catch {
+                    $json = @{}
+                }
+                if ($json.Keys.Count) {
+                    foreach($keyName in $json.Keys) {
+                        if ((IsPropertySecret -propertyName $keyName) -and ($json."$keyName" -isnot [boolean])) {
+                            # Mask individual values if property is secret
+                            MaskValue -key "$($secretName).$($keyName)" -value "$($json."$keyName")"
+                        }
+                    }
+                }
+                $base64value = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($secretValue))
+                $outSecrets += @{ "$secretsProperty" = $base64value }
+                Write-Host "$($secretsPropertyName) successfully read from secret $secretName"
+                $secretsCollection.Remove($secret)
+            }
         }
     }
 
     if ($secretsCollection) {
-        Write-Host "The following secrets was not found: $(($secretsCollection | ForEach-Object { 
+        $unresolvedSecrets = ($secretsCollection | ForEach-Object {
             $secretSplit = @($_.Split('='))
-            if ($secretSplit.Count -eq 1) {
-                $secretSplit[0]
+            $secretsProperty = $secretSplit[0]
+            # Secret names preceded by an asterisk are returned encrypted (and base64 encoded)
+            $secretsPropertyName = $secretsProperty.TrimStart('*')
+            if ($secretSplit.Count -eq 1 -or ($secretSplit[1] -eq '')) {
+                $secretsPropertyName
             }
             else {
-                "$($secretSplit[0]) (Secret $($secretSplit[1]))"
+                "$($secretsPropertyName) (Secret $($secretSplit[1]))"
             }
-            $outSecrets += @{ ""$($secretSplit[0])"" = """" }
-        }) -join ', ')"
+            $outSecrets += @{ "$secretsProperty" = "" }
+        }) -join ', '
+        Write-Host "The following secrets was not found: $unresolvedSecrets"
     }
 
+    #region Action: Output
+
     $outSecretsJson = $outSecrets | ConvertTo-Json -Compress
-    Add-Content -Path $env:GITHUB_ENV -Value "RepoSecrets=$outSecretsJson"
+    Add-Content -Encoding UTF8 -Path $env:GITHUB_OUTPUT -Value "Secrets=$outSecretsJson"
 
-    $outSettingsJson = $outSettings | ConvertTo-Json -Compress
-    Add-Content -Path $env:GITHUB_ENV -Value "Settings=$OutSettingsJson"
+    if ($getTokenForPush) {
+        if ($useGhTokenWorkflowForPush -eq 'true' -and $outSecrets.ghTokenWorkflow) {
+            Write-Host "Use ghTokenWorkflow for Push"
+            $ghToken = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($outSecrets.ghTokenWorkflow))
+        }
+        else {
+            Write-Host "Use github_token for Push"
+            $ghToken = GetGithubSecret -SecretName 'github_token'
+        }
+        Add-Content -Encoding UTF8 -Path $env:GITHUB_OUTPUT -Value "TokenForPush=$ghToken"
+    }
 
-    TrackTrace -telemetryScope $telemetryScope
-}
-catch {
-    OutputError -message "ReadSecrets action failed.$([environment]::Newline)Error: $($_.Exception.Message)$([environment]::Newline)Stacktrace: $($_.scriptStackTrace)"
-    TrackException -telemetryScope $telemetryScope -errorRecord $_
-    exit
+    #endregion
 }
 finally {
-    CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
     $buildMutex.ReleaseMutex()
 }

@@ -4,12 +4,14 @@ Param(
     [Parameter(HelpMessage = "The GitHub token running the action", Mandatory = $false)]
     [string] $token,
     [Parameter(HelpMessage = "Specifies the parent telemetry scope for the telemetry signal", Mandatory = $false)]
-    [string] $parentTelemetryScopeJson = '{}',
+    [string] $parentTelemetryScopeJson = '7b7d',
     [Parameter(HelpMessage = "Project name if the repository is setup for multiple projects", Mandatory = $false)]
     [string] $project = '.',
     [Parameter(HelpMessage = "Direct Download Url of .app or .zip file", Mandatory = $true)]
     [string] $url,
-    [Parameter(HelpMessage = "Direct Commit (Y/N)", Mandatory = $false)]
+    [Parameter(HelpMessage = "Set the branch to update", Mandatory = $false)]
+    [string] $updateBranch,
+    [Parameter(HelpMessage = "Direct Commit?", Mandatory = $false)]
     [bool] $directCommit
 )
 
@@ -18,7 +20,7 @@ function getfiles {
         [string] $url
     )
 
-    $path = Join-Path $env:TEMP "$([Guid]::NewGuid().ToString()).app"
+    $path = Join-Path ([System.IO.Path]::GetTempPath()) "$([Guid]::NewGuid().ToString()).app"
     Download-File -sourceUrl $url -destinationFile $path
     if (!(Test-Path -Path $path)) {
         throw "could not download the file."
@@ -33,27 +35,27 @@ function expandfile {
         [string] $path
     )
 
-    if ([string]::new([char[]](Get-Content $path -Encoding byte -TotalCount 2)) -eq "PK") {
+    if ([string]::new([char[]](Get-Content $path @byteEncodingParam -TotalCount 2)) -eq "PK") {
         # .zip file
-        $destinationPath = Join-Path $env:TEMP "$([Guid]::NewGuid().ToString())"
+        $destinationPath = Join-Path ([System.IO.Path]::GetTempPath()) "$([Guid]::NewGuid().ToString())"
         Expand-7zipArchive -path $path -destinationPath $destinationPath
-    
+
         $directoryInfo = Get-ChildItem $destinationPath | Measure-Object
         if ($directoryInfo.count -eq 0) {
             throw "The file is empty or malformed."
-        }      
+        }
 
         $appFolders = @()
         if (Test-Path (Join-Path $destinationPath 'app.json')) {
             $appFolders += @($destinationPath)
         }
-        Get-ChildItem $destinationPath -Directory -Recurse | Where-Object { Test-Path -Path (Join-Path $_.FullName 'app.json') } | ForEach-Object {
+        Get-ChildItem $destinationPath -Recurse | Where-Object { $_.PSIsContainer -and (Test-Path -Path (Join-Path $_.FullName 'app.json')) } | ForEach-Object {
             if (!($appFolders -contains $_.Parent.FullName)) {
                 $appFolders += @($_.FullName)
             }
         }
         $appFolders | ForEach-Object {
-            $newFolder = Join-Path $env:TEMP "$([Guid]::NewGuid().ToString())"
+            $newFolder = Join-Path ([System.IO.Path]::GetTempPath()) "$([Guid]::NewGuid().ToString())"
             write-Host "$_ -> $newFolder"
             Move-Item -Path $_ -Destination $newFolder -Force
             Write-Host "done"
@@ -66,48 +68,36 @@ function expandfile {
             Remove-Item -Path $destinationPath -Force -Recurse -ErrorAction SilentlyContinue
         }
     }
-    elseif ([string]::new([char[]](Get-Content $path -Encoding byte -TotalCount 4)) -eq "NAVX") {
-        $destinationPath = Join-Path $env:TEMP "$([Guid]::NewGuid().ToString())"
+    elseif ([string]::new([char[]](Get-Content $path @byteEncodingParam -TotalCount 4)) -eq "NAVX") {
+        $destinationPath = Join-Path ([System.IO.Path]::GetTempPath()) "$([Guid]::NewGuid().ToString())"
         Extract-AppFileToFolder -appFilename $path -appFolder $destinationPath -generateAppJson
-        $destinationPath        
+        $destinationPath
     }
     else {
         throw "The provided url cannot be extracted. The url might be wrong or the file is malformed."
     }
 }
 
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version 2.0
 $telemetryScope = $null
-$bcContainerHelperPath = $null
-
-# IMPORTANT: No code that can fail should be outside the try/catch
 
 try {
     . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
-    $branch = "$(if (!$directCommit) { [System.IO.Path]::GetRandomFileName() })"
-    $serverUrl = CloneIntoNewFolder -actor $actor -token $token -branch $branch
-    $repoBaseFolder = (Get-Location).path
-    $BcContainerHelperPath = DownloadAndImportBcContainerHelper -baseFolder $repoBaseFolder
+    $serverUrl, $branch = CloneIntoNewFolder -actor $actor -token $token -updateBranch $updateBranch -DirectCommit $directCommit -newBranchPrefix 'add-existing-app'
+    $baseFolder = (Get-Location).path
+    DownloadAndImportBcContainerHelper -baseFolder $baseFolder
 
     import-module (Join-Path -path $PSScriptRoot -ChildPath "..\TelemetryHelper.psm1" -Resolve)
-    $telemetryScope = CreateScope -eventId 'DO0070' -parentTelemetryScopeJson $parentTelemetryScopeJson 
+    $telemetryScope = CreateScope -eventId 'DO0070' -parentTelemetryScopeJson $parentTelemetryScopeJson
 
     $type = "PTE"
     Write-Host "Reading $RepoSettingsFile"
     $settingsJson = Get-Content $RepoSettingsFile -Encoding UTF8 | ConvertFrom-Json
     if ($settingsJson.PSObject.Properties.Name -eq "type") {
-        $type = $settingsJson.Type
+        $type = $settingsJson.type
     }
 
     CheckAndCreateProjectFolder -project $project
-    $baseFolder = (Get-Location).path
-
-    Write-Host "Reading $ALGoSettingsFile"
-    $settingsJson = Get-Content $ALGoSettingsFile -Encoding UTF8 | ConvertFrom-Json
-    if ($settingsJson.PSObject.Properties.Name -eq "type") {
-        $type = $settingsJson.Type
-    }
+    $projectFolder = (Get-Location).path
 
     $appNames = @()
     getfiles -url $url | ForEach-Object {
@@ -125,34 +115,32 @@ try {
         if ($appJson.PSObject.Properties.Name -eq "idRange") {
             $ranges += @($appJson.idRange)
         }
-        
-        $ttype = ""
-        $ranges | Select-Object -First 1 | ForEach-Object {
-            if ($_.from -lt 100000 -and $_.to -lt 100000) {
-                $ttype = "PTE"
-            }
-            else {
-                $ttype = "AppSource App" 
-            }
+
+        # Determine whether the app is PTE or AppSource App based on one of the id ranges (the first)
+        if ($ranges[0].from -lt 100000 -and $ranges[0].to -lt 100000) {
+            $ttype = "PTE"
         }
-        
+        else {
+            $ttype = "AppSource App"
+        }
+
         if ($appJson.PSObject.Properties.Name -eq "dependencies") {
-            $appJson.dependencies | ForEach-Object {
-                if ($_.PSObject.Properties.Name -eq "AppId") {
-                    $id = $_.AppId
+            foreach($dependency in $appJson.dependencies) {
+                if ($dependency.PSObject.Properties.Name -eq "AppId") {
+                    $id = $dependency.AppId
                 }
                 else {
-                    $id = $_.Id
+                    $id = $dependency.Id
                 }
-                if ($testRunnerApps.Contains($id)) { 
+                if ($testRunnerApps.Contains($id)) {
                     $ttype = "Test App"
                 }
             }
         }
 
         if ($ttype -ne "Test App") {
-            Get-ChildItem -Path $appFolder -Filter "*.al" -Recurse | ForEach-Object {
-                $alContent = (Get-Content -Path $_.FullName -Encoding UTF8) -join "`n"
+            foreach($appName in (Get-ChildItem -Path $appFolder -Filter "*.al" -Recurse).FullName) {
+                $alContent = (Get-Content -Path $appName -Encoding UTF8) -join "`n"
                 if ($alContent -like "*codeunit*subtype*=*test*[test]*") {
                     $ttype = "Test App"
                 }
@@ -163,21 +151,21 @@ try {
             OutputWarning -message "According to settings, repository is for apps of type $type. The app you are adding seams to be of type $ttype"
         }
 
-        $appFolders = Get-ChildItem -Path $appFolder -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'app.json') }
+        $appFolders = Get-ChildItem -Path $appFolder | Where-Object { $_.PSIsContainer -and (Test-Path (Join-Path $_.FullName 'app.json')) }
         if (-not $appFolders) {
             $appFolders = @($appFolder)
             # TODO: What to do about the über app.json - another workspace? another setting?
         }
 
         $orgfolderName = $appJson.name.Split([System.IO.Path]::getInvalidFileNameChars()) -join ""
-        $folderName = GetUniqueFolderName -baseFolder $baseFolder -folderName $orgfolderName
+        $folderName = GetUniqueFolderName -baseFolder $projectFolder -folderName $orgfolderName
         if ($folderName -ne $orgfolderName) {
             OutputWarning -message "$orgFolderName already exists as a folder in the repo, using $folderName instead"
         }
 
-        Move-Item -Path $appFolder -Destination $baseFolder -Force
+        Move-Item -Path $appFolder -Destination $projectFolder -Force
         Rename-Item -Path ([System.IO.Path]::GetFileName($appFolder)) -NewName $folderName
-        $appFolder = Join-Path $baseFolder $folderName
+        $appFolder = Join-Path $projectFolder $folderName
 
         Get-ChildItem $appFolder -Filter '*.*' -Recurse | ForEach-Object {
             if ($_.Name.Contains('%20')) {
@@ -188,9 +176,9 @@ try {
         $appFolders | ForEach-Object {
             # Modify .AL-Go\settings.json
             try {
-                $settingsJsonFile = Join-Path $baseFolder $ALGoSettingsFile
+                $settingsJsonFile = Join-Path $projectFolder $ALGoSettingsFile
                 $SettingsJson = Get-Content $settingsJsonFile -Encoding UTF8 | ConvertFrom-Json
-                if (@($settingsJson.appFolders)+@($settingsJson.testFolders)) {
+                if (@($settingsJson.appFolders) + @($settingsJson.testFolders)) {
                     if ($ttype -eq "Test App") {
                         if ($SettingsJson.testFolders -notcontains $foldername) {
                             $SettingsJson.testFolders += @($folderName)
@@ -201,7 +189,7 @@ try {
                             $SettingsJson.appFolders += @($folderName)
                         }
                     }
-                    $SettingsJson | ConvertTo-Json -Depth 99 | Set-Content -Path $settingsJsonFile -Encoding UTF8
+                    $SettingsJson | Set-JsonContentLF -Path $settingsJsonFile
                 }
             }
             catch {
@@ -209,7 +197,7 @@ try {
             }
 
             # Modify workspace
-            Get-ChildItem -Path $baseFolder -Filter "*.code-workspace" | ForEach-Object {
+            Get-ChildItem -Path $projectFolder -Filter "*.code-workspace" | ForEach-Object {
                 try {
                     $workspaceFileName = $_.Name
                     $workspaceFile = $_.FullName
@@ -217,23 +205,22 @@ try {
                     if (-not ($workspace.folders | Where-Object { $_.Path -eq $foldername })) {
                         $workspace.folders += @(@{ "path" = $foldername })
                     }
-                    $workspace | ConvertTo-Json -Depth 99 | Set-Content -Path $workspaceFile -Encoding UTF8
+                    $workspace | Set-JsonContentLF -Path $workspaceFile
                 }
                 catch {
-                   throw "$workspaceFileName is malformed.$([environment]::Newline) $($_.Exception.Message)"
+                    throw "$workspaceFileName is malformed.$([environment]::Newline) $($_.Exception.Message)"
                 }
             }
         }
     }
-    Set-Location $repoBaseFolder
-    CommitFromNewFolder -serverUrl $serverUrl -commitMessage "Add existing apps ($($appNames -join ', '))" -branch $branch
+    Set-Location $baseFolder
+    CommitFromNewFolder -serverUrl $serverUrl -commitMessage "Add existing apps ($($appNames -join ', '))" -branch $branch | Out-Null
 
     TrackTrace -telemetryScope $telemetryScope
 }
 catch {
-    OutputError -message "AddExistingApp acion failed.$([environment]::Newline)Error: $($_.Exception.Message)$([environment]::Newline)Stacktrace: $($_.scriptStackTrace)"
-    TrackException -telemetryScope $telemetryScope -errorRecord $_
-}
-finally {
-    CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
+    if (Get-Module BcContainerHelper) {
+        TrackException -telemetryScope $telemetryScope -errorRecord $_
+    }
+    throw
 }

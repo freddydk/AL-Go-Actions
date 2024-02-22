@@ -1,14 +1,10 @@
 Param(
     [Parameter(HelpMessage = "The event id of the initiating workflow", Mandatory = $true)]
-    [string] $eventId 
+    [string] $eventId
 )
 
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version 2.0
 $telemetryScope = $null
-$BcContainerHelperPath = ""
 
-# IMPORTANT: No code that can fail should be outside the try/catch
 try {
     . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
     . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-TestRepoHelper.ps1" -Resolve)
@@ -29,37 +25,55 @@ try {
 
     Write-Big -str "a$verstr"
 
-    Test-ALGoRepository -baseFolder $ENV:GITHUB_WORKSPACE
+    TestALGoRepository
 
-    $BcContainerHelperPath = DownloadAndImportBcContainerHelper -baseFolder $ENV:GITHUB_WORKSPACE
+    DownloadAndImportBcContainerHelper
+
+    TestRunnerPrerequisites
 
     import-module (Join-Path -path $PSScriptRoot -ChildPath "..\TelemetryHelper.psm1" -Resolve)
     $telemetryScope = CreateScope -eventId $eventId
     if ($telemetryScope) {
-        AddTelemetryProperty -telemetryScope $telemetryScope -key "repository" -value (GetHash -str $ENV:GITHUB_REPOSITORY)
+        $repoSettings = Get-Content -Path (Join-Path $ENV:GITHUB_WORKSPACE '.github/AL-Go-Settings.json') -Raw -Encoding UTF8 | ConvertFrom-Json | ConvertTo-HashTable
+        $type = 'PTE'
+        if ($repoSettings.Keys -contains 'type') {
+            $type = $repoSettings.type
+        }
+        $templateUrl = 'Not set'
+        if ($repoSettings.Keys -contains 'templateUrl') {
+            $templateUrl = $repoSettings.templateUrl
+        }
+        if ($verstr -eq "d") {
+            $verstr = "Developer/Private"
+        }
+        elseif ($verstr -eq "p") {
+            $verstr = "Preview"
+        }
+        AddTelemetryProperty -telemetryScope $telemetryScope -key "ALGoVersion" -value $verstr
+        AddTelemetryProperty -telemetryScope $telemetryScope -key "type" -value $type
+        AddTelemetryProperty -telemetryScope $telemetryScope -key "templateUrl" -value $templateUrl
+        AddTelemetryProperty -telemetryScope $telemetryScope -key "repository" -value $ENV:GITHUB_REPOSITORY
         AddTelemetryProperty -telemetryScope $telemetryScope -key "runAttempt" -value $ENV:GITHUB_RUN_ATTEMPT
         AddTelemetryProperty -telemetryScope $telemetryScope -key "runNumber" -value $ENV:GITHUB_RUN_NUMBER
         AddTelemetryProperty -telemetryScope $telemetryScope -key "runId" -value $ENV:GITHUB_RUN_ID
-        
-        $scopeJson = $telemetryScope | ConvertTo-Json -Compress
+
+        $scopeJson = strToHexStr -str ($telemetryScope | ConvertTo-Json -Compress)
         $correlationId = ($telemetryScope.CorrelationId).ToString()
     }
     else {
-        $scopeJson = "{}"
+        $scopeJson = '7b7d'
         $correlationId = [guid]::Empty.ToString()
     }
 
-    Write-Host "::set-output name=telemetryScopeJson::$scopeJson"
-    Write-Host "set-output name=telemetryScopeJson::$scopeJson"
+    Add-Content -Encoding UTF8 -Path $env:GITHUB_OUTPUT -Value "telemetryScopeJson=$scopeJson"
+    Write-Host "telemetryScopeJson=$scopeJson"
 
-    Write-Host "::set-output name=correlationId::$correlationId"
-    Write-Host "set-output name=correlationId::$correlationId"
-
+    Add-Content -Encoding UTF8 -Path $env:GITHUB_OUTPUT -Value "correlationId=$correlationId"
+    Write-Host "correlationId=$correlationId"
 }
 catch {
-    OutputError -message "WorkflowInitialize action failed.$([environment]::Newline)Error: $($_.Exception.Message)$([environment]::Newline)Stacktrace: $($_.scriptStackTrace)"
-    TrackException -telemetryScope $telemetryScope -errorRecord $_
-}
-finally {
-    CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
+    if (Get-Module BcContainerHelper) {
+        TrackException -telemetryScope $telemetryScope -errorRecord $_
+    }
+    throw
 }

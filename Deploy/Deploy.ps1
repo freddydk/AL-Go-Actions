@@ -1,168 +1,158 @@
 Param(
-    [Parameter(HelpMessage = "The GitHub actor running the action", Mandatory = $false)]
-    [string] $actor,
     [Parameter(HelpMessage = "The GitHub token running the action", Mandatory = $false)]
     [string] $token,
-    [Parameter(HelpMessage = "Specifies the parent telemetry scope for the telemetry signal", Mandatory = $false)]
-    [string] $parentTelemetryScopeJson = '{}',
-    [Parameter(HelpMessage = "Projects to deploy", Mandatory = $false)]
-    [string] $projects = '',
     [Parameter(HelpMessage = "Name of environment to deploy to", Mandatory = $true)]
     [string] $environmentName,
-    [Parameter(HelpMessage = "Artifacts to deploy", Mandatory = $true)]
-    [string] $artifacts,
+    [Parameter(HelpMessage = "Path to the downloaded artifacts to deploy", Mandatory = $true)]
+    [string] $artifactsFolder,
     [Parameter(HelpMessage = "Type of deployment (CD or Publish)", Mandatory = $false)]
     [ValidateSet('CD','Publish')]
-    [string] $type = "CD"
+    [string] $type = "CD",
+    [Parameter(HelpMessage = "The settings for all Deployment Environments", Mandatory = $true)]
+    [string] $deploymentEnvironmentsJson
 )
 
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version 2.0
-$telemetryScope = $null
-$bcContainerHelperPath = $null
+. (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
+DownloadAndImportBcContainerHelper
 
-if ($projects -eq '') {
-    Write-Host "No projects to deploy"
-}
-else {
+$deploymentEnvironments = $deploymentEnvironmentsJson | ConvertFrom-Json | ConvertTo-HashTable -recurse
+$deploymentSettings = $deploymentEnvironments."$environmentName"
+$envName = $environmentName.Split(' ')[0]
+$secrets = $env:Secrets | ConvertFrom-Json
 
-# IMPORTANT: No code that can fail should be outside the try/catch
-
-try {
-    . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
-    $BcContainerHelperPath = DownloadAndImportBcContainerHelper -baseFolder $ENV:GITHUB_WORKSPACE
-
-    import-module (Join-Path -path $PSScriptRoot -ChildPath "..\TelemetryHelper.psm1" -Resolve)
-    $telemetryScope = CreateScope -eventId 'DO0075' -parentTelemetryScopeJson $parentTelemetryScopeJson
-
-    $EnvironmentName = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($environmentName))
-
-    $apps = @()
-    $baseFolder = Join-Path $ENV:GITHUB_WORKSPACE "artifacts"
-
-    if ($artifacts -like "$($baseFolder)*") {
-        if (Test-Path $artifacts -PathType Container) {
-            $projects.Split(',') | ForEach-Object {
-                $project = $_.Replace('\','_')
-                Write-Host "project '$project'"
-                $apps += @((Get-ChildItem -Path $artifacts -Filter "$project-*-Apps-*") | ForEach-Object { $_.FullName })
-                if (!($apps)) {
-                    throw "There is no artifacts present in $artifacts."
-                }
-                $apps += @((Get-ChildItem -Path $artifacts -Filter "$project-*-Dependencies-*") | ForEach-Object { $_.FullName })
-            }
-        }
-        elseif (Test-Path $artifacts) {
-            $apps = $artifacts
-        }
-        else {
-            throw "Artifact $artifacts was not found. Make sure that the artifact files exist and files are not corrupted."
-        }
+# Check obsolete secrets
+"$($envName)-EnvironmentName","$($envName)_EnvironmentName","EnvironmentName" | ForEach-Object {
+    if ($secrets."$_") {
+        throw "The secret $_ is obsolete and should be replaced by using the EnvironmentName property in the DeployTo$envName setting in .github/AL-Go-Settings.json instead"
     }
-    elseif ($artifacts -eq "current" -or $artifacts -eq "prerelease" -or $artifacts -eq "draft") {
-        # latest released version
-        $releases = GetReleases -token $token -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY
-        if ($artifacts -eq "current") {
-            $release = $releases | Where-Object { -not ($_.prerelease -or $_.draft) } | Select-Object -First 1
-        }
-        elseif ($artifacts -eq "prerelease") {
-            $release = $releases | Where-Object { -not ($_.draft) } | Select-Object -First 1
-        }
-        elseif ($artifacts -eq "draft") {
-            $release = $releases | Select-Object -First 1
-        }
-        if (!($release)) {
-            throw "Unable to locate $artifacts release"
-        }
-        New-Item $baseFolder -ItemType Directory | Out-Null
-        DownloadRelease -token $token -projects $projects -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY -release $release -path $baseFolder -mask "Apps"
-        DownloadRelease -token $token -projects $projects -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY -release $release -path $baseFolder -mask "Dependencies"
-        $apps = @((Get-ChildItem -Path $baseFolder) | ForEach-Object { $_.FullName })
-        if (!$apps) {
-            throw "Artifact $artifacts was not found on any release. Make sure that the artifact files exist and files are not corrupted."
-        }
+}
+if ($secrets.Projects) {
+    throw "The secret Projects is obsolete and should be replaced by using the Projects property in the DeployTo$envName setting in .github/AL-Go-Settings.json instead"
+}
+
+$authContext = $null
+foreach($secretName in "$($envName)-AuthContext","$($envName)_AuthContext","AuthContext") {
+    if ($secrets."$secretName") {
+        $authContext = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($secrets."$secretName"))
+        break
+    }
+}
+if (-not $authContext) {
+    # No AuthContext secret provided, if deviceCode is present, use it - else give an error
+    if ($env:deviceCode) {
+        $authContext = "{""deviceCode"":""$($env:deviceCode)""}"
     }
     else {
-        New-Item $baseFolder -ItemType Directory | Out-Null
-        $allArtifacts = @(GetArtifacts -token $token -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY -mask "Apps" -projects $projects -Version $artifacts -branch "main")
-        $allArtifacts += @(GetArtifacts -token $token -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY -mask "Dependencies" -projects $projects -Version $artifacts -branch "main")
-        if ($allArtifacts) {
-            $allArtifacts | ForEach-Object {
-                $appFile = DownloadArtifact -token $token -artifact $_ -path $baseFolder
-                if (!(Test-Path $appFile)) {
-                    throw "Unable to download artifact $($_.name)"
-                }
-                $apps += @($appFile)
+        throw "No Authentication Context found for environment ($environmentName). You must create an environment secret called AUTHCONTEXT or a repository secret called $($envName)_AUTHCONTEXT."
+    }
+}
+
+$apps = @()
+$artifactsFolder = Join-Path $ENV:GITHUB_WORKSPACE $artifactsFolder
+if (Test-Path $artifactsFolder -PathType Container) {
+    $deploymentSettings.Projects.Split(',') | ForEach-Object {
+        $project = $_.Replace('\','_').Replace('/','_')
+        $refname = "$ENV:GITHUB_REF_NAME".Replace('/','_')
+        Write-Host "project '$project'"
+        $projectApps = @((Get-ChildItem -Path $artifactsFolder -Filter "$project-$refname-Apps-*.*.*.*") | ForEach-Object { $_.FullName })
+        if (!($projectApps)) {
+            if ($project -ne '*') {
+                throw "There are no artifacts present in $artifactsFolder matching $project-$refname-Apps-<version>."
             }
         }
         else {
-            throw "Could not find any Apps artifacts for projects $projects, version $artifacts"
+            $apps += $projectApps
         }
     }
+}
+else {
+    throw "Artifact $artifactsFolder was not found. Make sure that the artifact files exist and files are not corrupted."
+}
 
-    Write-Host "Apps to deploy"
-    $apps | Out-Host
+Write-Host "Apps to deploy"
+$apps | Out-Host
 
-    Set-Location $baseFolder
-    if (-not ($ENV:AUTHCONTEXT)) {
-        throw "An environment secret for environment($environmentName) called AUTHCONTEXT containing authentication information for the environment was not found.You must create an environment secret."
-    }
-    $authContext = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ENV:AUTHCONTEXT))
+Set-Location $ENV:GITHUB_WORKSPACE
 
+$customScript = Join-Path $ENV:GITHUB_WORKSPACE ".github/DeployTo$($deploymentSettings.EnvironmentType).ps1"
+if (Test-Path $customScript) {
+    Write-Host "Executing custom deployment script $customScript"
+    $parameters = @{
+        "type" = $type
+        "AuthContext" = $authContext
+        "Apps" = $apps
+    } + $deploymentSettings
+    . $customScript -parameters $parameters
+}
+else {
     try {
         $authContextParams = $authContext | ConvertFrom-Json | ConvertTo-HashTable
         $bcAuthContext = New-BcAuthContext @authContextParams
+        if ($null -eq $bcAuthContext) {
+            throw "Authentication failed"
+        }
     } catch {
         throw "Authentication failed. $([environment]::Newline) $($_.exception.message)"
     }
 
-    $envName = $environmentName.Split(' ')[0]
-    Write-Host "$($bcContainerHelperConfig.baseUrl.TrimEnd('/'))/$($bcAuthContext.tenantId)/$envName/deployment/url"
-    $response = Invoke-RestMethod -UseBasicParsing -Method Get -Uri "$($bcContainerHelperConfig.baseUrl.TrimEnd('/'))/$($bcAuthContext.tenantId)/$envName/deployment/url"
+    $environmentUrl = "$($bcContainerHelperConfig.baseUrl.TrimEnd('/'))/$($bcAuthContext.tenantId)/$($deploymentSettings.EnvironmentName)"
+    Add-Content -Encoding UTF8 -Path $env:GITHUB_OUTPUT -Value "environmentUrl=$environmentUrl"
+    Write-Host "EnvironmentUrl: $environmentUrl"
+    $response = Invoke-RestMethod -UseBasicParsing -Method Get -Uri "$environmentUrl/deployment/url"
     if ($response.Status -eq "DoesNotExist") {
-        OutputError -message "Environment with name $envName does not exist in the current authorization context."
+        OutputError -message "Environment with name $($deploymentSettings.EnvironmentName) does not exist in the current authorization context."
         exit
     }
     if ($response.Status -ne "Ready") {
-        OutputError -message "Environment with name $envName is not ready (Status is $($response.Status))."
+        OutputError -message "Environment with name $($deploymentSettings.EnvironmentName) is not ready (Status is $($response.Status))."
         exit
     }
 
     try {
-        if ($response.environmentType -eq 1) {
-            if ($bcAuthContext.ClientSecret) {
-                Write-Host "Using S2S, publishing apps using automation API"
-                Publish-PerTenantExtensionApps -bcAuthContext $bcAuthContext -environment $envName -appFiles $apps
+        $sandboxEnvironment = ($response.environmentType -eq 1)
+        if ($sandboxEnvironment -and !($bcAuthContext.ClientSecret)) {
+            # Sandbox and not S2S -> use dev endpoint (Publish-BcContainerApp)
+            $parameters = @{
+                "bcAuthContext" = $bcAuthContext
+                "environment" = $deploymentSettings.EnvironmentName
+                "appFile" = $apps
             }
-            else {
-                Write-Host "Publishing apps using development endpoint"
-                Publish-BcContainerApp -bcAuthContext $bcAuthContext -environment $envName -appFile $apps -useDevEndpoint -checkAlreadyInstalled
+            if ($deploymentSettings.SyncMode) {
+                if (@('Add','ForceSync', 'Clean', 'Development') -notcontains $deploymentSettings.SyncMode) {
+                    throw "Invalid SyncMode $($deploymentSettings.SyncMode) when deploying using the development endpoint. Valid values are Add, ForceSync, Development and Clean."
+                }
+                Write-Host "Using $($deploymentSettings.SyncMode)"
+                $parameters += @{ "SyncMode" = $deploymentSettings.SyncMode }
             }
+            Write-Host "Publishing apps using development endpoint"
+            Publish-BcContainerApp @parameters -useDevEndpoint -checkAlreadyInstalled -excludeRuntimePackages -replacePackageId
+        }
+        elseif (!$sandboxEnvironment -and $type -eq 'CD' -and !($deploymentSettings.continuousDeployment)) {
+            # Continuous deployment is undefined in settings - we will not deploy to production environments
+            Write-Host "::Warning::Ignoring environment $($deploymentSettings.EnvironmentName), which is a production environment"
         }
         else {
-            if ($type -eq 'CD') {
-                Write-Host "Ignoring environment $environmentName, which is a production environment"
+            # Use automation API for production environments (Publish-PerTenantExtensionApps)
+            $parameters = @{
+                "bcAuthContext" = $bcAuthContext
+                "environment" = $deploymentSettings.EnvironmentName
+                "appFiles" = $apps
             }
-            else {
-                # Check for AppSource App - cannot be deployed
-                Write-Host "Publishing apps using automation API"
-                Publish-PerTenantExtensionApps -bcAuthContext $bcAuthContext -environment $envName -appFiles $apps
+            if ($deploymentSettings.SyncMode) {
+                if (@('Add','ForceSync') -notcontains $deploymentSettings.SyncMode) {
+                    throw "Invalid SyncMode $($deploymentSettings.SyncMode) when deploying using the automation API. Valid values are Add and ForceSync."
+                }
+                Write-Host "Using $($deploymentSettings.SyncMode)"
+                $syncMode = $deploymentSettings.SyncMode
+                if ($syncMode -eq 'ForceSync') { $syncMode = 'Force' }
+                $parameters += @{ "SchemaSyncMode" = $syncMode }
             }
+            Write-Host "Publishing apps using automation API"
+            Publish-PerTenantExtensionApps @parameters
         }
     }
     catch {
         OutputError -message "Deploying to $environmentName failed.$([environment]::Newline) $($_.Exception.Message)"
         exit
     }
-
-    TrackTrace -telemetryScope $telemetryScope
-
-}
-catch {
-    OutputError -message "Deploy action failed.$([environment]::Newline)Error: $($_.Exception.Message)$([environment]::Newline)Stacktrace: $($_.scriptStackTrace)"
-    TrackException -telemetryScope $telemetryScope -errorRecord $_
-}
-finally {
-    CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
-}
 }

@@ -1,43 +1,58 @@
 Param(
-    [Parameter(HelpMessage = "The GitHub actor running the action", Mandatory = $false)]
-    [string] $actor,
     [Parameter(HelpMessage = "The GitHub token running the action", Mandatory = $false)]
     [string] $token,
     [Parameter(HelpMessage = "Specifies the parent telemetry scope for the telemetry signal", Mandatory = $false)]
-    [string] $parentTelemetryScopeJson = '{}',
+    [string] $parentTelemetryScopeJson = '7b7d',
+    [Parameter(HelpMessage = "ArtifactUrl to use for the build", Mandatory = $false)]
+    [string] $artifact = "",
     [Parameter(HelpMessage = "Project folder", Mandatory = $false)]
     [string] $project = "",
-    [Parameter(HelpMessage = "Settings from repository in compressed Json format", Mandatory = $false)]
-    [string] $settingsJson = '{"AppBuild":"", "AppRevision":""}',
-    [Parameter(HelpMessage = "Secrets from repository in compressed Json format", Mandatory = $false)]
-    [string] $secretsJson = '{"insiderSasToken":"","licenseFileUrl":"","CodeSignCertificateUrl":"","CodeSignCertificatePassword":"","KeyVaultCertificateUrl":"","KeyVaultCertificatePassword":"","KeyVaultClientId":"","StorageContext":"","ApplicationInsightsConnectionString":""}'
+    [Parameter(HelpMessage = "Specifies a mode to use for the build steps", Mandatory = $false)]
+    [string] $buildMode = 'Default',
+    [Parameter(HelpMessage = "A JSON-formatted list of apps to install", Mandatory = $false)]
+    [string] $installAppsJson = '[]',
+    [Parameter(HelpMessage = "A JSON-formatted list of test apps to install", Mandatory = $false)]
+    [string] $installTestAppsJson = '[]'
 )
 
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version 2.0
 $telemetryScope = $null
-$bcContainerHelperPath = $null
 $containerBaseFolder = $null
 $projectPath = $null
 
-# IMPORTANT: No code that can fail should be outside the try/catch
-
 try {
     . (Join-Path -Path $PSScriptRoot -ChildPath "..\AL-Go-Helper.ps1" -Resolve)
-    $BcContainerHelperPath = DownloadAndImportBcContainerHelper -baseFolder $ENV:GITHUB_WORKSPACE 
+    DownloadAndImportBcContainerHelper
 
     import-module (Join-Path -path $PSScriptRoot -ChildPath "..\TelemetryHelper.psm1" -Resolve)
     $telemetryScope = CreateScope -eventId 'DO0080' -parentTelemetryScopeJson $parentTelemetryScopeJson
 
-    # Pull docker image in the background
-    $genericImageName = Get-BestGenericImageName
-    Start-Job -ScriptBlock {
-        docker pull --quiet $genericImageName
-    } -ArgumentList $genericImageName | Out-Null
+    if ($isWindows) {
+        # Pull docker image in the background
+        $genericImageName = Get-BestGenericImageName
+        Start-Job -ScriptBlock {
+            docker pull --quiet $using:genericImageName
+        } | Out-Null
+    }
 
     $containerName = GetContainerName($project)
 
-    $runAlPipelineParams = @{}
+    $ap = "$ENV:GITHUB_ACTION_PATH".Split('\')
+    $branch = $ap[$ap.Count-2]
+    $owner = $ap[$ap.Count-4]
+
+    if ($owner -ne "microsoft") {
+        $verstr = "dev"
+    }
+    else {
+        $verstr = $branch
+    }
+
+    $runAlPipelineParams = @{
+        "sourceRepositoryUrl" = "$ENV:GITHUB_SERVER_URL/$ENV:GITHUB_REPOSITORY"
+        "sourceCommit" = $ENV:GITHUB_SHA
+        "buildBy" = "AL-Go for GitHub,$verstr"
+        "buildUrl" = "$ENV:GITHUB_SERVER_URL/$ENV:GITHUB_REPOSITORY/actions/runs/$ENV:GITHUB_RUN_ID"
+    }
     if ($project  -eq ".") { $project = "" }
     $baseFolder = $ENV:GITHUB_WORKSPACE
     if ($bcContainerHelperConfig.useVolumes -and $bcContainerHelperConfig.hostHelperFolder -eq "HostHelperFolder") {
@@ -57,92 +72,103 @@ try {
     if ($project) {
         $sharedFolder = $baseFolder
     }
-    $workflowName = $env:GITHUB_WORKFLOW
+    $workflowName = "$env:GITHUB_WORKFLOW".Trim()
 
     Write-Host "use settings and secrets"
-    $settings = $settingsJson | ConvertFrom-Json | ConvertTo-HashTable
-    $secrets = $secretsJson | ConvertFrom-Json | ConvertTo-HashTable
+    $settings = $env:Settings | ConvertFrom-Json | ConvertTo-HashTable
+    # ENV:Secrets is not set when running Pull_Request trigger
+    if ($env:Secrets) {
+        $secrets = $env:Secrets | ConvertFrom-Json | ConvertTo-HashTable
+    }
+    else {
+        $secrets = @{}
+    }
+
     $appBuild = $settings.appBuild
     $appRevision = $settings.appRevision
-    'licenseFileUrl','insiderSasToken','CodeSignCertificateUrl','CodeSignCertificatePassword','KeyVaultCertificateUrl','KeyVaultCertificatePassword','KeyVaultClientId','StorageContext','ApplicationInsightsConnectionString' | ForEach-Object {
-        if ($secrets.ContainsKey($_)) {
+    'licenseFileUrl','codeSignCertificateUrl','*codeSignCertificatePassword','keyVaultCertificateUrl','*keyVaultCertificatePassword','keyVaultClientId','gitHubPackagesContext','applicationInsightsConnectionString' | ForEach-Object {
+        # Secrets might not be read during Pull Request runs
+        if ($secrets.Keys -contains $_) {
             $value = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($secrets."$_"))
         }
         else {
             $value = ""
         }
-        Set-Variable -Name $_ -Value $value
+        # Secrets preceded by an asterisk are returned encrypted.
+        # Variable name should not include the asterisk
+        Set-Variable -Name $_.TrimStart('*') -Value $value
     }
 
-    $repo = AnalyzeRepo -settings $settings -token $token -baseFolder $baseFolder -project $project -insiderSasToken $insiderSasToken
-    if ((-not $repo.appFolders) -and (-not $repo.testFolders)) {
+    $analyzeRepoParams = @{}
+
+    if ($artifact) {
+        # Avoid checking the artifact setting in AnalyzeRepo if we have an artifactUrl
+        $settings.artifact = $artifact
+        $gitHubHostedRunner = $settings.gitHubRunner -like "windows-*" -or $settings.gitHubRunner -like "ubuntu-*"
+        if ($gitHubHostedRunner -and $settings.useCompilerFolder) {
+            # If we are running GitHub hosted agents and UseCompilerFolder is set (and we have an artifactUrl), we need to set the artifactCachePath
+            $runAlPipelineParams += @{
+                "artifactCachePath" = Join-Path $ENV:GITHUB_WORKSPACE ".artifactcache"
+            }
+            $analyzeRepoParams += @{
+                "doNotCheckArtifactSetting" = $true
+            }
+        }
+    }
+
+    $settings = AnalyzeRepo -settings $settings -baseFolder $baseFolder -project $project @analyzeRepoParams
+    $settings = CheckAppDependencyProbingPaths -settings $settings -token $token -baseFolder $baseFolder -project $project
+
+    if ((-not $settings.appFolders) -and (-not $settings.testFolders) -and (-not $settings.bcptTestFolders)) {
         Write-Host "Repository is empty, exiting"
         exit
     }
 
-    if ($repo.type -eq "AppSource App" ) {
+    if ($settings.type -eq "AppSource App" ) {
         if ($licenseFileUrl -eq "") {
-            OutputError -message "When building an AppSource App, you need to create a secret called LicenseFileUrl, containing a secure URL to your license file with permission to the objects used in the app."
-            exit
+            OutputWarning -message "When building an AppSource App, you should create a secret called LicenseFileUrl, containing a secure URL to your license file with permission to the objects used in the app."
         }
     }
 
-    $artifact = $repo.artifact
-    $installApps = $repo.installApps
-    $installTestApps = $repo.installTestApps
+    $installApps = $settings.installApps
+    $installTestApps = $settings.installTestApps
 
-    if ($repo.appDependencyProbingPaths) {
-        Write-Host "::group::Downloading dependencies"
-        $installApps += Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "Apps"
-        Get-dependencies -probingPathsJson $repo.appDependencyProbingPaths -mask "TestApps" | ForEach-Object {
-            $installTestApps += "($_)"
-        }
-        Write-Host "::endgroup::"
-    }
-    
+    $installApps += $installAppsJson | ConvertFrom-Json
+    $installTestApps += $installTestAppsJson | ConvertFrom-Json
+
     # Analyze app.json version dependencies before launching pipeline
 
     # Analyze InstallApps and InstallTestApps before launching pipeline
 
-    # Check if insidersastoken is used (and defined)
-
-    if (!$repo.doNotSignApps -and $CodeSignCertificateUrl -and $CodeSignCertificatePassword) {
-        $runAlPipelineParams += @{ 
+    # Check if codeSignCertificateUrl+Password is used (and defined)
+    if (!$settings.doNotSignApps -and $codeSignCertificateUrl -and $codeSignCertificatePassword -and !$settings.keyVaultCodesignCertificateName) {
+        OutputWarning -message "Using the legacy CodeSignCertificateUrl and CodeSignCertificatePassword parameters. Consider using the new Azure Keyvault signing instead. Go to https://aka.ms/ALGoSettings#keyVaultCodesignCertificateName to find out more"
+        $runAlPipelineParams += @{
             "CodeSignCertPfxFile" = $codeSignCertificateUrl
-            "CodeSignCertPfxPassword" = ConvertTo-SecureString -string $codeSignCertificatePassword -AsPlainText -Force
+            "CodeSignCertPfxPassword" = ConvertTo-SecureString -string $codeSignCertificatePassword
         }
     }
     if ($applicationInsightsConnectionString) {
-        $runAlPipelineParams += @{ 
+        $runAlPipelineParams += @{
             "applicationInsightsConnectionString" = $applicationInsightsConnectionString
         }
     }
 
-    if ($KeyVaultCertificateUrl -and $KeyVaultCertificatePassword -and $KeyVaultClientId) {
-        $runAlPipelineParams += @{ 
-            "KeyVaultCertPfxFile" = $KeyVaultCertificateUrl
-            "keyVaultCertPfxPassword" = ConvertTo-SecureString -string $keyVaultCertificatePassword -AsPlainText -Force
+    if ($keyVaultCertificateUrl -and $keyVaultCertificatePassword -and $keyVaultClientId) {
+        $runAlPipelineParams += @{
+            "KeyVaultCertPfxFile" = $keyVaultCertificateUrl
+            "keyVaultCertPfxPassword" = ConvertTo-SecureString -string $keyVaultCertificatePassword
             "keyVaultClientId" = $keyVaultClientId
         }
     }
 
     $previousApps = @()
-    if ($repo.skipUpgrade) {
-        OutputWarning -message "Skipping upgrade tests"
-    }
-    else {
+    if (!$settings.skipUpgrade) {
         Write-Host "::group::Locating previous release"
         try {
-            $releasesJson = GetReleases -token $token -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY
-            if ($env:GITHUB_REF_NAME -like 'release/*') {
-                # For CI/CD in a release branch use that release as previous build
-                $latestRelease = $releasesJson | Where-Object { $_.tag_name -eq "$env:GITHUB_REF_NAME".SubString(8) } | Select-Object -First 1
-            }
-            else {
-                $latestRelease = $releasesJson | Where-Object { -not ($_.prerelease -or $_.draft) } | Select-Object -First 1
-            }
+            $latestRelease = GetLatestRelease -token $token -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY -ref $ENV:GITHUB_REF_NAME
             if ($latestRelease) {
-                Write-Host "Using $($latestRelease.name) as previous release"
+                Write-Host "Using $($latestRelease.name) (tag $($latestRelease.tag_name)) as previous release"
                 $artifactsFolder = Join-Path $baseFolder "artifacts"
                 New-Item $artifactsFolder -ItemType Directory | Out-Null
                 DownloadRelease -token $token -projects $project -api_url $ENV:GITHUB_API_URL -repository $ENV:GITHUB_REPOSITORY -release $latestRelease -path $artifactsFolder -mask "Apps"
@@ -159,14 +185,14 @@ try {
         Write-Host "::endgroup::"
     }
 
-    $additionalCountries = $repo.additionalCountries
+    $additionalCountries = $settings.additionalCountries
 
     $imageName = ""
-    if ($repo.gitHubRunner -ne "windows-latest") {
-        $imageName = $repo.cacheImageName
+    if (-not $gitHubHostedRunner) {
+        $imageName = $settings.cacheImageName
         if ($imageName) {
             Write-Host "::group::Flush ContainerHelper Cache"
-            Flush-ContainerHelperCache -keepdays $repo.cacheKeepDays
+            Flush-ContainerHelperCache -cache 'all,exitedcontainers' -keepdays $settings.cacheKeepDays
             Write-Host "::endgroup::"
         }
     }
@@ -174,20 +200,20 @@ try {
     $environmentName = ""
     $CreateRuntimePackages = $false
 
-    if ($repo.versioningStrategy -eq -1) {
-        $artifactVersion = [Version]$repo.artifact.Split('/')[4]
+    if ($settings.versioningStrategy -eq -1) {
+        $artifactVersion = [Version]$settings.artifact.Split('/')[4]
         $runAlPipelineParams += @{
             "appVersion" = "$($artifactVersion.Major).$($artifactVersion.Minor)"
         }
         $appBuild = $artifactVersion.Build
         $appRevision = $artifactVersion.Revision
     }
-    elseif (($repo.versioningStrategy -band 16) -eq 16) {
+    elseif (($settings.versioningStrategy -band 16) -eq 16) {
         $runAlPipelineParams += @{
-            "appVersion" = $repo.repoVersion
+            "appVersion" = $settings.repoVersion
         }
     }
-    
+
     $buildArtifactFolder = Join-Path $projectPath ".buildartifacts"
     New-Item $buildArtifactFolder -ItemType Directory | Out-Null
 
@@ -199,13 +225,14 @@ try {
     }
 
     $buildOutputFile = Join-Path $projectPath "BuildOutput.txt"
+    $containerEventLogFile = Join-Path $projectPath "ContainerEventLog.evtx"
 
-    "containerName=$containerName" | Add-Content $ENV:GITHUB_ENV
+    Add-Content -Encoding UTF8 -Path $env:GITHUB_ENV -Value "containerName=$containerName"
 
     Set-Location $projectPath
     $runAlPipelineOverrides | ForEach-Object {
         $scriptName = $_
-        $scriptPath = Join-Path $ALGoFolder "$ScriptName.ps1"
+        $scriptPath = Join-Path $ALGoFolderName "$ScriptName.ps1"
         if (Test-Path -Path $scriptPath -Type Leaf) {
             Write-Host "Add override for $scriptName"
             $runAlPipelineParams += @{
@@ -214,7 +241,7 @@ try {
         }
     }
 
-    if (-not $runAlPipelineParams.ContainsKey('RemoveBcContainer')) {
+    if ($runAlPipelineParams.Keys -notcontains 'RemoveBcContainer') {
         $runAlPipelineParams += @{
             "RemoveBcContainer" = {
                 Param([Hashtable]$parameters)
@@ -224,13 +251,13 @@ try {
         }
     }
 
-    if (-not $runAlPipelineParams.ContainsKey('ImportTestDataInBcContainer')) {
-        if (($repo.configPackages) -or ($repo.Keys | Where-Object { $_ -like 'configPackages.*' })) {
+    if ($runAlPipelineParams.Keys -notcontains 'ImportTestDataInBcContainer') {
+        if (($settings.configPackages) -or ($settings.Keys | Where-Object { $_ -like 'configPackages.*' })) {
             Write-Host "Adding Import Test Data override"
             Write-Host "Configured config packages:"
-            $repo.Keys | Where-Object { $_ -like 'configPackages*' } | ForEach-Object {
+            $settings.Keys | Where-Object { $_ -like 'configPackages*' } | ForEach-Object {
                 Write-Host "- $($_):"
-                $repo."$_" | ForEach-Object {
+                $settings."$_" | ForEach-Object {
                     Write-Host "  - $_"
                 }
             }
@@ -239,16 +266,17 @@ try {
                     Param([Hashtable]$parameters)
                     $country = Get-BcContainerCountry -containerOrImageName $parameters.containerName
                     $prop = "configPackages.$country"
-                    if (-not $repo.ContainsKey($prop)) {
+                    if ($settings.Keys -notcontains $prop) {
                         $prop = "configPackages"
                     }
-                    if ($repo."$prop") {
+                    if ($settings."$prop") {
                         Write-Host "Importing config packages from $prop"
-                        $repo."$prop" | ForEach-Object {
+                        $settings."$prop" | ForEach-Object {
                             $configPackage = $_.Split(',')[0].Replace('{COUNTRY}',$country)
                             $packageId = $_.Split(',')[1]
                             UploadImportAndApply-ConfigPackageInBcContainer `
                                 -containerName $parameters.containerName `
+                                -companyName $settings.companyName `
                                 -Credential $parameters.credential `
                                 -Tenant $parameters.tenant `
                                 -ConfigPackage $configPackage `
@@ -259,7 +287,42 @@ try {
             }
         }
     }
-    
+
+    if ($gitHubPackagesContext -and ($runAlPipelineParams.Keys -notcontains 'InstallMissingDependencies')) {
+        $gitHubPackagesCredential = $gitHubPackagesContext | ConvertFrom-Json
+        $runAlPipelineParams += @{
+            "InstallMissingDependencies" = {
+                Param([Hashtable]$parameters)
+                $parameters.missingDependencies | ForEach-Object {
+                    $appid = $_.Split(':')[0]
+                    $appName = $_.Split(':')[1]
+                    $version = $appName.SubString($appName.LastIndexOf('_')+1)
+                    $version = [System.Version]$version.SubString(0,$version.Length-4)
+                    $publishParams = @{
+                        "nuGetServerUrl" = $gitHubPackagesCredential.serverUrl
+                        "nuGetToken" = $gitHubPackagesCredential.token
+                        "packageName" = "AL-Go-$appId"
+                        "version" = $version
+                    }
+                    if ($parameters.ContainsKey('CopyInstalledAppsToFolder')) {
+                        $publishParams += @{
+                            "CopyInstalledAppsToFolder" = $parameters.CopyInstalledAppsToFolder
+                        }
+                    }
+                    if ($parameters.ContainsKey('containerName')) {
+                        Publish-BcNuGetPackageToContainer -containerName $parameters.containerName -tenant $parameters.tenant -skipVerification @publishParams
+                    }
+                    else {
+                        Copy-BcNuGetPackageToFolder -appSymbolsFolder $parameters.appSymbolsFolder @publishParams
+                    }
+
+                }
+            }
+        }
+    }
+
+    "enableTaskScheduler",
+    "assignPremiumPlan",
     "doNotBuildTests",
     "doNotRunTests",
     "doNotRunBcptTests",
@@ -271,42 +334,72 @@ try {
     "enableCodeCop",
     "enableAppSourceCop",
     "enablePerTenantExtensionCop",
-    "enableUICop" | ForEach-Object {
-        if ($repo."$_") { $runAlPipelineParams += @{ "$_" = $true } }
+    "enableUICop",
+    "enableCodeAnalyzersOnTestApps",
+    "useCompilerFolder" | ForEach-Object {
+        if ($settings."$_") { $runAlPipelineParams += @{ "$_" = $true } }
     }
 
-    Write-Host "Invoke Run-AlPipeline"
+    switch($buildMode){
+        'Clean' {
+            $preprocessorsymbols = $settings.cleanModePreprocessorSymbols
+
+            if (!$preprocessorsymbols) {
+                throw "No cleanModePreprocessorSymbols defined in settings.json for this project. Please add the preprocessor symbols to use when building in clean mode or disable CLEAN mode."
+            }
+
+            if ($runAlPipelineParams.Keys -notcontains 'preprocessorsymbols') {
+                $runAlPipelineParams["preprocessorsymbols"] = @()
+            }
+
+            Write-Host "Adding Preprocessor symbols: $preprocessorsymbols"
+            $runAlPipelineParams["preprocessorsymbols"] += $preprocessorsymbols
+        }
+        'Translated' {
+            if ($runAlPipelineParams.Keys -notcontains 'features') {
+                $runAlPipelineParams["features"] = @()
+            }
+            $runAlPipelineParams["features"] += "translationfile"
+        }
+    }
+
+    Write-Host "Invoke Run-AlPipeline with buildmode $buildMode"
     Run-AlPipeline @runAlPipelineParams `
+        -accept_insiderEula `
         -pipelinename $workflowName `
         -containerName $containerName `
         -imageName $imageName `
         -bcAuthContext $authContext `
         -environment $environmentName `
-        -artifact $artifact.replace('{INSIDERSASTOKEN}',$insiderSasToken) `
-        -companyName $repo.companyName `
-        -memoryLimit $repo.memoryLimit `
+        -artifact $settings.artifact.replace('{INSIDERSASTOKEN}','') `
+        -vsixFile $settings.vsixFile `
+        -companyName $settings.companyName `
+        -memoryLimit $settings.memoryLimit `
         -baseFolder $projectPath `
         -sharedFolder $sharedFolder `
-        -licenseFile $LicenseFileUrl `
+        -licenseFile $licenseFileUrl `
         -installApps $installApps `
         -installTestApps $installTestApps `
-        -installOnlyReferencedApps:$repo.installOnlyReferencedApps `
-        -generateDependencyArtifact:$repo.generateDependencyArtifact `
-        -updateDependencies:$repo.updateDependencies `
+        -installOnlyReferencedApps:$settings.installOnlyReferencedApps `
+        -generateDependencyArtifact `
+        -updateDependencies:$settings.updateDependencies `
         -previousApps $previousApps `
-        -appFolders $repo.appFolders `
-        -testFolders $repo.testFolders `
-        -bcptTestFolders $repo.bcptTestFolders `
+        -appFolders $settings.appFolders `
+        -testFolders $settings.testFolders `
+        -bcptTestFolders $settings.bcptTestFolders `
         -buildOutputFile $buildOutputFile `
+        -containerEventLogFile $containerEventLogFile `
         -testResultsFile $testResultsFile `
         -testResultsFormat 'JUnit' `
-        -customCodeCops $repo.customCodeCops `
+        -customCodeCops $settings.customCodeCops `
         -gitHubActions `
-        -failOn $repo.failOn `
-        -rulesetFile $repo.rulesetFile `
-        -AppSourceCopMandatoryAffixes $repo.appSourceCopMandatoryAffixes `
+        -failOn $settings.failOn `
+        -treatTestFailuresAsWarnings:$settings.treatTestFailuresAsWarnings `
+        -rulesetFile $settings.rulesetFile `
+        -enableExternalRulesets:$settings.enableExternalRulesets `
+        -appSourceCopMandatoryAffixes $settings.appSourceCopMandatoryAffixes `
         -additionalCountries $additionalCountries `
-        -obsoleteTagMinAllowedMajorMinor $repo.obsoleteTagMinAllowedMajorMinor `
+        -obsoleteTagMinAllowedMajorMinor $settings.obsoleteTagMinAllowedMajorMinor `
         -buildArtifactFolder $buildArtifactFolder `
         -CreateRuntimePackages:$CreateRuntimePackages `
         -appBuild $appBuild -appRevision $appRevision `
@@ -320,17 +413,34 @@ try {
         Copy-Item -Path (Join-Path $projectPath ".output") -Destination $destFolder -Recurse -Force
         Copy-Item -Path (Join-Path $projectPath "testResults*.xml") -Destination $destFolder
         Copy-Item -Path (Join-Path $projectPath "bcptTestResults*.json") -Destination $destFolder
-        Copy-Item -Path (Join-Path $projectPath "buildoutput.txt") -Destination $destFolder
+        Copy-Item -Path $buildOutputFile -Destination $destFolder -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path $containerEventLogFile -Destination $destFolder -Force -ErrorAction SilentlyContinue
     }
 
     TrackTrace -telemetryScope $telemetryScope
 }
 catch {
-    OutputError -message "RunPipeline action failed.$([environment]::Newline)Error: $($_.Exception.Message)$([environment]::Newline)Stacktrace: $($_.scriptStackTrace)"
-    TrackException -telemetryScope $telemetryScope -errorRecord $_
+    if (Get-Module BcContainerHelper) {
+        TrackException -telemetryScope $telemetryScope -errorRecord $_
+    }
+    throw
 }
 finally {
-    CleanupAfterBcContainerHelper -bcContainerHelperPath $bcContainerHelperPath
+    try {
+        if (Test-BcContainer -containerName $containerName) {
+            Write-Host "Get Event Log from container"
+            $eventlogFile = Get-BcContainerEventLog -containerName $containerName -doNotOpen
+            Copy-Item -Path $eventLogFile -Destination $containerEventLogFile
+            if ($project) {
+                # Copy event log to project folder if multiproject
+                $destFolder = Join-Path $ENV:GITHUB_WORKSPACE $project
+                Copy-Item -Path $containerEventLogFile -Destination $destFolder
+            }
+        }
+    }
+    catch {
+        Write-Host "Error getting event log from container: $($_.Exception.Message)"
+    }
     if ($containerBaseFolder -and (Test-Path $containerBaseFolder) -and $projectPath -and (Test-Path $projectPath)) {
         Write-Host "Removing temp folder"
         Remove-Item -Path (Join-Path $projectPath '*') -Recurse -Force
